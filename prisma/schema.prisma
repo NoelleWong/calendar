@@ -1,0 +1,183 @@
+// Prisma schema — Calendar Comparison App
+// See CLAUDE.md for the full data model rationale and conventions.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth (NextAuth.js — OAuth). Standard NextAuth Prisma adapter shape.
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  accounts Account[]
+  sessions Session[]
+
+  projectGroups    ProjectGroup[]
+  projects         Project[]
+  calendarBlocks   CalendarBlock[]
+  templates        Template[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Domain model
+// ---------------------------------------------------------------------------
+
+// The "color" level. Every bubble's fill color is resolved through
+// Project -> ProjectGroup.color — never stored directly on Project or
+// CalendarBlock. See CLAUDE.md "Rule: a block's color is always derived...".
+model ProjectGroup {
+  id     String @id @default(cuid())
+  userId String
+  name   String
+  color  String // hex, e.g. "#4F46E5"
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// The "bubble" level. One Project = one distinct bubble identity; its color
+// comes from its ProjectGroup.
+model Project {
+  id      String @id @default(cuid())
+  userId  String
+  groupId String
+  name    String
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  calendarBlocks CalendarBlock[]
+  templateBlocks TemplateBlock[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([groupId])
+}
+
+// Atomic 30-min storage unit. Bubbles are computed at render time by merging
+// consecutive same-project CalendarBlocks within a day — never persisted.
+// See CLAUDE.md "Rule: bubbles are a display-layer merge, never stored."
+model CalendarBlock {
+  id          String      @id @default(cuid())
+  userId      String
+  projectId   String
+  weekId      String      // ISO week, e.g. "2026-W29" (Monday-start)
+  dayOfWeek   Int         // 0 (Mon) – 6 (Sun)
+  slotIndex   Int         // 0–47, 30-min increments from midnight
+  createdFrom CreatedFrom @default(MANUAL)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One project occupies at most one slot per day per week — prevents
+  // overlapping blocks and keeps the bubble-merge scan well-defined.
+  @@unique([userId, weekId, dayOfWeek, slotIndex])
+  @@index([userId, weekId])
+  @@index([projectId])
+}
+
+enum CreatedFrom {
+  TEMPLATE
+  MANUAL
+}
+
+// A user's reusable default week. TemplateBlocks are copied into real
+// CalendarBlock rows (createdFrom: TEMPLATE) when a fresh week is opened —
+// never referenced live. See CLAUDE.md "Templates are read-only at
+// instantiation time."
+model Template {
+  id        String  @id @default(cuid())
+  userId    String
+  name      String
+  isDefault Boolean @default(false)
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blocks TemplateBlock[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  // Enforced in application code (Postgres can't do a partial unique index
+  // via Prisma syntax directly): only one Template per user may have
+  // isDefault = true. Wrap default-swap in a transaction — unset the old
+  // default, then set the new one.
+}
+
+model TemplateBlock {
+  id         String @id @default(cuid())
+  templateId String
+  projectId  String
+  dayOfWeek  Int    // 0 (Mon) – 6 (Sun)
+  slotIndex  Int    // 0–47
+
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, dayOfWeek, slotIndex])
+  @@index([templateId])
+}
