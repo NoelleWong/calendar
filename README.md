@@ -30,12 +30,11 @@ Visit `http://localhost:3000/calendar/2026-W29` for a single week, or
 Done:
 - Prisma schema (`prisma/schema.prisma`)
 - Bubble-merge, color, and counts logic (`lib/bubbles.ts`, `lib/colors.ts`, `lib/counts.ts`)
-- `/api/blocks` (GET/POST/DELETE) and `/api/templates` (GET/POST/PATCH/DELETE)
-- `CalendarGrid` + `Bubble` + `WeekCountsSummary` components
-- `/calendar/[weekId]` and `/compare` pages, NextAuth (Google) wiring
+- `/api/blocks`, `/api/templates`, `/api/groups`, `/api/projects` (full CRUD)
+- `CalendarGrid` + `Bubble` + `WeekCountsSummary` + `ProjectPicker` components
+- `/calendar/[weekId]` (with working empty-slot → group → project assignment), `/compare`, and `/projects` pages
+- NextAuth (Google) wiring
 
 Not yet wired (marked with TODOs in the pages):
-- Project/group management UI (create/edit/delete projects & groups)
-- Slot-click → project picker (assigning a project to an empty slot)
 - Bubble-click → edit/split/delete affordance
 - Template editor UI (currently only reachable via the API)

@@ -132,14 +132,16 @@ async function instantiateWeekFromTemplateIfEmpty(userId: string, weekId: string
   if (!defaultTemplate || defaultTemplate.blocks.length === 0) return;
 
   await prisma.calendarBlock.createMany({
-    data: defaultTemplate.blocks.map((tb) => ({
-      userId,
-      weekId,
-      dayOfWeek: tb.dayOfWeek,
-      slotIndex: tb.slotIndex,
-      projectId: tb.projectId,
-      createdFrom: "TEMPLATE" as const,
-    })),
+    data: defaultTemplate.blocks.map(
+      (tb: { dayOfWeek: number; slotIndex: number; projectId: string }) => ({
+        userId,
+        weekId,
+        dayOfWeek: tb.dayOfWeek,
+        slotIndex: tb.slotIndex,
+        projectId: tb.projectId,
+        createdFrom: "TEMPLATE" as const,
+      })
+    ),
     skipDuplicates: true,
   });
 }

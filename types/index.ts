@@ -50,5 +50,15 @@ export interface WeekCounts {
   byGroup: { group: ProjectGroupDTO; slotCount: number }[];
 }
 
+// Variants returned by /api/groups and /api/projects, which include usage
+// counts so the management UI can warn before a destructive delete.
+export interface ProjectGroupWithCount extends ProjectGroupDTO {
+  _count: { projects: number };
+}
+
+export interface ProjectWithCount extends ProjectDTO {
+  _count: { calendarBlocks: number; templateBlocks: number };
+}
+
 export const SLOTS_PER_DAY = 48; // 24h * 2 (30-min slots)
 export const DAYS_PER_WEEK = 7;

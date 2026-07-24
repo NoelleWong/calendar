@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const template = await prisma.$transaction(async (tx) => {
+  const template = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     if (isDefault) {
       await tx.template.updateMany({
         where: { userId, isDefault: true },
@@ -97,7 +98,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const template = await prisma.$transaction(async (tx) => {
+  const template = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // Ownership check
     const existing = await tx.template.findFirst({ where: { id: templateId, userId } });
     if (!existing) throw new Error("NOT_FOUND");
@@ -122,7 +123,7 @@ export async function PATCH(req: NextRequest) {
       },
       include: blocksInclude,
     });
-  }).catch((err) => {
+  }).catch((err: unknown) => {
     if (err instanceof Error && err.message === "NOT_FOUND") return null;
     throw err;
   });
