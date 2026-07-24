@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* IBM Plex Sans for UI chrome, IBM Plex Mono for durations/timestamps —
+   monospace earns its place here because slot times and durations are
+   tabular data that benefits from fixed-width digits, not decoration. */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+:root {
+  --font-sans: "IBM Plex Sans";
+  --font-mono: "IBM Plex Mono";
+}
+
+body {
+  @apply bg-canvas text-ink;
+}
+
+/* Visible keyboard focus, per frontend-design quality floor */
+:focus-visible {
+  outline: 2px solid theme("colors.ink");
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

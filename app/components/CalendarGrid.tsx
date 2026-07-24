@@ -1,7 +1,7 @@
 "use client";
 
-import { mergeWeekIntoBubbles } from "@/lib/bubbles";
-import type { Bubble as BubbleType, CalendarBlockDTO } from "@/types";
+import { mergeWeekIntoBubbles, type MergeableSlot } from "@/lib/bubbles";
+import type { Bubble as BubbleType } from "@/types";
 import { Bubble } from "./Bubble";
 
 const SLOT_HEIGHT_PX = 24; // keep in sync with Bubble.tsx SLOT_HEIGHT_PX
@@ -10,7 +10,7 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 interface CalendarGridProps {
   weekId: string;
-  blocks: CalendarBlockDTO[];
+  blocks: MergeableSlot[];
   onBubbleClick?: (bubble: BubbleType) => void;
   onEmptySlotClick?: (dayOfWeek: number, slotIndex: number) => void;
 }

@@ -1,16 +1,28 @@
-import type { Bubble, CalendarBlockDTO } from "@/types";
+import type { Bubble, ProjectDTO } from "@/types";
 
 /**
- * Merge one day's worth of atomic 30-min CalendarBlocks into display
- * bubbles: consecutive slots with the same projectId collapse into a single
- * bubble whose slotCount determines its rendered length.
+ * The minimal shape mergeBlocksIntoBubbles needs. Both CalendarBlockDTO
+ * (which also carries id/weekId/createdFrom) and the template editor's
+ * local in-memory slot state satisfy this structurally, so the same merge
+ * logic drives both the live calendar and the template editor.
+ */
+export interface MergeableSlot {
+  dayOfWeek: number;
+  slotIndex: number;
+  project: ProjectDTO;
+}
+
+/**
+ * Merge one day's worth of atomic 30-min slots into display bubbles:
+ * consecutive slots with the same projectId collapse into a single bubble
+ * whose slotCount determines its rendered length.
  *
  * Never persist the result — recompute on every render. See CLAUDE.md,
  * "Rule: bubbles are a display-layer merge, never stored."
  *
- * @param blocks all blocks for ONE day (any order — this sorts by slotIndex)
+ * @param blocks all slots for ONE day (any order — this sorts by slotIndex)
  */
-export function mergeBlocksIntoBubbles(blocks: CalendarBlockDTO[]): Bubble[] {
+export function mergeBlocksIntoBubbles(blocks: MergeableSlot[]): Bubble[] {
   if (blocks.length === 0) return [];
 
   const sorted = [...blocks].sort((a, b) => a.slotIndex - b.slotIndex);
@@ -49,9 +61,9 @@ export function mergeBlocksIntoBubbles(blocks: CalendarBlockDTO[]): Bubble[] {
  * day is never contiguous with slot 0 of the next).
  */
 export function mergeWeekIntoBubbles(
-  blocks: CalendarBlockDTO[]
+  blocks: MergeableSlot[]
 ): Record<number, Bubble[]> {
-  const byDay = new Map<number, CalendarBlockDTO[]>();
+  const byDay = new Map<number, MergeableSlot[]>();
 
   for (const block of blocks) {
     const existing = byDay.get(block.dayOfWeek) ?? [];

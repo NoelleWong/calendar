@@ -31,9 +31,12 @@ Done:
 - Prisma schema (`prisma/schema.prisma`)
 - Bubble-merge, color, and counts logic (`lib/bubbles.ts`, `lib/colors.ts`, `lib/counts.ts`)
 - `/api/blocks`, `/api/templates`, `/api/groups`, `/api/projects` (full CRUD)
-- `CalendarGrid` + `Bubble` + `WeekCountsSummary` + `ProjectPicker` + `BubbleActionSheet` components
-- `/calendar/[weekId]` (empty-slot assignment, and bubble click → change project / split / delete), `/compare`, and `/projects` pages
+- `CalendarGrid` + `Bubble` + `WeekCountsSummary` + `ProjectPicker` + `BubbleActionSheet` components (reused across live weeks and the template editor)
+- `/calendar/[weekId]` (empty-slot assignment, bubble click → change project / split / delete), `/compare`, `/projects`, and `/templates` (create/rename/delete templates, set default, edit a template's blocks with the same picker/action-sheet flow, save wholesale) pages
 - NextAuth (Google) wiring
+- Top nav linking all four pages
 
-Not yet wired (marked with TODOs in the pages):
-- Template editor UI (currently only reachable via the API)
+Everything from the original feature list is now wired end to end. Natural next steps, not yet built:
+- Drag-to-select a multi-slot range in one gesture (currently: click empty slot → assign one 30-min slot at a time, or use Split on an existing bubble to carve out a sub-range)
+- Auth: Google OAuth client ID/secret still need to be created in Google Cloud Console and added to `.env`
+- Any polish pass on mobile/narrow-viewport layout — grid assumes a desktop-width viewport
