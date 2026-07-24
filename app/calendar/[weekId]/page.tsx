@@ -4,12 +4,20 @@ import { useEffect, useState } from "react";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { WeekCountsSummary } from "@/components/WeekCountsSummary";
 import { ProjectPicker } from "@/components/ProjectPicker";
+import { BubbleActionSheet } from "@/components/BubbleActionSheet";
 import { countWeek } from "@/lib/counts";
-import type { CalendarBlockDTO, ProjectGroupWithCount, ProjectWithCount } from "@/types";
+import type {
+  Bubble,
+  CalendarBlockDTO,
+  ProjectGroupWithCount,
+  ProjectWithCount,
+} from "@/types";
 
-interface PendingSlot {
+/** A pending "assign these slots to a project" request, feeding the ProjectPicker. */
+interface PendingAssignment {
   dayOfWeek: number;
   slotIndex: number;
+  slotCount: number;
 }
 
 export default function CalendarWeekPage({
@@ -22,7 +30,8 @@ export default function CalendarWeekPage({
   const [groups, setGroups] = useState<ProjectGroupWithCount[]>([]);
   const [projects, setProjects] = useState<ProjectWithCount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingSlot, setPendingSlot] = useState<PendingSlot | null>(null);
+  const [pendingAssignment, setPendingAssignment] = useState<PendingAssignment | null>(null);
+  const [selectedBubble, setSelectedBubble] = useState<Bubble | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function refreshBlocks() {
@@ -54,14 +63,14 @@ export default function CalendarWeekPage({
   }, [weekId]);
 
   async function handleSelectProject(projectId: string) {
-    if (!pendingSlot) return;
-    const { dayOfWeek, slotIndex } = pendingSlot;
-    setPendingSlot(null); // close immediately, optimistic
+    if (!pendingAssignment) return;
+    const { dayOfWeek, slotIndex, slotCount } = pendingAssignment;
+    setPendingAssignment(null); // close immediately, optimistic
     try {
       const res = await fetch("/api/blocks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weekId, dayOfWeek, slotIndex, projectId }),
+        body: JSON.stringify({ weekId, dayOfWeek, slotIndex, slotCount, projectId }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -73,8 +82,25 @@ export default function CalendarWeekPage({
     }
   }
 
-  // TODO: wire onBubbleClick to an edit/split/delete affordance for that
-  // project's run of slots.
+  async function handleDeleteBubble() {
+    if (!selectedBubble) return;
+    const { dayOfWeek, startSlot, slotCount } = selectedBubble;
+    setSelectedBubble(null); // close immediately, optimistic
+    try {
+      const res = await fetch("/api/blocks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekId, dayOfWeek, slotIndex: startSlot, slotCount }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to delete block");
+      }
+      await refreshBlocks();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete block");
+    }
+  }
 
   return (
     <main className="p-6">
@@ -97,19 +123,44 @@ export default function CalendarWeekPage({
             weekId={weekId}
             blocks={blocks}
             onEmptySlotClick={(dayOfWeek, slotIndex) =>
-              setPendingSlot({ dayOfWeek, slotIndex })
+              setPendingAssignment({ dayOfWeek, slotIndex, slotCount: 1 })
             }
+            onBubbleClick={(bubble) => setSelectedBubble(bubble)}
           />
           <WeekCountsSummary counts={countWeek(weekId, blocks)} />
         </div>
       )}
 
+      {selectedBubble && (
+        <BubbleActionSheet
+          bubble={selectedBubble}
+          onChangeWholeProject={() => {
+            setPendingAssignment({
+              dayOfWeek: selectedBubble.dayOfWeek,
+              slotIndex: selectedBubble.startSlot,
+              slotCount: selectedBubble.slotCount,
+            });
+            setSelectedBubble(null);
+          }}
+          onSplit={({ splitAt, slotCount }) => {
+            setPendingAssignment({
+              dayOfWeek: selectedBubble.dayOfWeek,
+              slotIndex: splitAt,
+              slotCount,
+            });
+            setSelectedBubble(null);
+          }}
+          onDelete={handleDeleteBubble}
+          onClose={() => setSelectedBubble(null)}
+        />
+      )}
+
       <ProjectPicker
-        open={pendingSlot !== null}
+        open={pendingAssignment !== null}
         groups={groups}
         projects={projects}
         onSelect={handleSelectProject}
-        onClose={() => setPendingSlot(null)}
+        onClose={() => setPendingAssignment(null)}
       />
     </main>
   );

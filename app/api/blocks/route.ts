@@ -47,13 +47,16 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/blocks
- * Body: { weekId, dayOfWeek, slotIndex, projectId }
+ * Body: { weekId, dayOfWeek, slotIndex, slotCount?, projectId }
  *
- * Upserts a single 30-min slot. Uses the (userId, weekId, dayOfWeek,
- * slotIndex) unique constraint so this doubles as "set/overwrite this slot."
- * A slot set here is always createdFrom: MANUAL, even if it happens to
- * match the template's assignment — see CLAUDE.md: editing is per-slot,
- * bubbles/merging are recomputed client-side and never mutate the template.
+ * Upserts a contiguous run of slots starting at slotIndex (slotCount slots,
+ * default 1) to projectId. Used for: assigning an empty slot (slotCount=1),
+ * reassigning a whole bubble (slotCount = bubble.slotCount), and completing
+ * a split (slotCount = the portion being reassigned). Uses the (userId,
+ * weekId, dayOfWeek, slotIndex) unique constraint per slot, so this doubles
+ * as "set/overwrite these slots." All slots written here are always
+ * createdFrom: MANUAL — see CLAUDE.md: editing is per-slot, bubbles/merging
+ * are recomputed client-side and never mutate the template.
  */
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -63,10 +66,17 @@ export async function POST(req: NextRequest) {
   const userId = (session.user as { id: string }).id;
 
   const body = await req.json();
-  const { weekId, dayOfWeek, slotIndex, projectId } = body as {
+  const {
+    weekId,
+    dayOfWeek,
+    slotIndex,
+    slotCount = 1,
+    projectId,
+  } = body as {
     weekId: string;
     dayOfWeek: number;
     slotIndex: number;
+    slotCount?: number;
     projectId: string;
   };
 
@@ -74,27 +84,49 @@ export async function POST(req: NextRequest) {
     typeof weekId !== "string" ||
     typeof dayOfWeek !== "number" ||
     typeof slotIndex !== "number" ||
-    typeof projectId !== "string"
+    typeof projectId !== "string" ||
+    !Number.isInteger(slotCount) ||
+    slotCount < 1 ||
+    slotIndex < 0 ||
+    slotIndex + slotCount > 48
   ) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const block = await prisma.calendarBlock.upsert({
-    where: {
-      userId_weekId_dayOfWeek_slotIndex: { userId, weekId, dayOfWeek, slotIndex },
-    },
-    create: { userId, weekId, dayOfWeek, slotIndex, projectId, createdFrom: "MANUAL" },
-    update: { projectId, createdFrom: "MANUAL" },
-    include: projectInclude,
-  });
+  const blocks = await prisma.$transaction(
+    Array.from({ length: slotCount }, (_, i) =>
+      prisma.calendarBlock.upsert({
+        where: {
+          userId_weekId_dayOfWeek_slotIndex: {
+            userId,
+            weekId,
+            dayOfWeek,
+            slotIndex: slotIndex + i,
+          },
+        },
+        create: {
+          userId,
+          weekId,
+          dayOfWeek,
+          slotIndex: slotIndex + i,
+          projectId,
+          createdFrom: "MANUAL",
+        },
+        update: { projectId, createdFrom: "MANUAL" },
+        include: projectInclude,
+      })
+    )
+  );
 
-  return NextResponse.json({ block });
+  return NextResponse.json({ blocks });
 }
 
 /**
  * DELETE /api/blocks
- * Body: { weekId, dayOfWeek, slotIndex }
- * Clears a single slot (removes the block entirely, leaving it empty).
+ * Body: { weekId, dayOfWeek, slotIndex, slotCount? }
+ * Clears a contiguous run of slots (slotCount slots, default 1) starting at
+ * slotIndex, leaving them empty. Used for both single-slot clear and
+ * whole-bubble delete (slotCount = bubble.slotCount).
  */
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -104,19 +136,31 @@ export async function DELETE(req: NextRequest) {
   const userId = (session.user as { id: string }).id;
 
   const body = await req.json();
-  const { weekId, dayOfWeek, slotIndex } = body as {
+  const { weekId, dayOfWeek, slotIndex, slotCount = 1 } = body as {
     weekId: string;
     dayOfWeek: number;
     slotIndex: number;
+    slotCount?: number;
   };
 
-  await prisma.calendarBlock
-    .delete({
-      where: {
-        userId_weekId_dayOfWeek_slotIndex: { userId, weekId, dayOfWeek, slotIndex },
-      },
-    })
-    .catch(() => null); // already empty — deleting a non-existent slot is a no-op
+  if (
+    typeof weekId !== "string" ||
+    typeof dayOfWeek !== "number" ||
+    typeof slotIndex !== "number" ||
+    !Number.isInteger(slotCount) ||
+    slotCount < 1
+  ) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  await prisma.calendarBlock.deleteMany({
+    where: {
+      userId,
+      weekId,
+      dayOfWeek,
+      slotIndex: { gte: slotIndex, lt: slotIndex + slotCount },
+    },
+  });
 
   return NextResponse.json({ ok: true });
 }

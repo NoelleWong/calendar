@@ -31,10 +31,9 @@ Done:
 - Prisma schema (`prisma/schema.prisma`)
 - Bubble-merge, color, and counts logic (`lib/bubbles.ts`, `lib/colors.ts`, `lib/counts.ts`)
 - `/api/blocks`, `/api/templates`, `/api/groups`, `/api/projects` (full CRUD)
-- `CalendarGrid` + `Bubble` + `WeekCountsSummary` + `ProjectPicker` components
-- `/calendar/[weekId]` (with working empty-slot → group → project assignment), `/compare`, and `/projects` pages
+- `CalendarGrid` + `Bubble` + `WeekCountsSummary` + `ProjectPicker` + `BubbleActionSheet` components
+- `/calendar/[weekId]` (empty-slot assignment, and bubble click → change project / split / delete), `/compare`, and `/projects` pages
 - NextAuth (Google) wiring
 
 Not yet wired (marked with TODOs in the pages):
-- Bubble-click → edit/split/delete affordance
 - Template editor UI (currently only reachable via the API)
