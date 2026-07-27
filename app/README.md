@@ -5,6 +5,7 @@ See `CLAUDE.md` for architecture, data model, and conventions.
 ## Local setup
 
 ```bash
+cd app
 npm install
 cp .env.example .env       # fill in DATABASE_URL, NEXTAUTH_SECRET, Google OAuth keys
 npx prisma migrate dev --name init
@@ -13,6 +14,41 @@ npm run dev
 
 Visit `http://localhost:3000/calendar/2026-W29` for a single week, or
 `http://localhost:3000/compare?weeks=2026-W29,2026-W30` to compare two weeks.
+
+## Regarding the .env
+**DATABASE_URL** one option is Neon (neon.tech): create a free project, go to the dashboard, copy the connection string shown (looks like postgresql://user:password@ep-xxxx.region.aws.neon.tech/dbname?sslmode=require)
+**NEXTAUTH_URL** leave as http://localhost:3000 for local dev. Once deployed, set this to your actual production URL in Vercel's env vars (e.g. https://your-app.vercel.app).
+
+**NEXTAUTH_SECRET** generate by pasting in bash shell:
+```
+openssl rand -base64 32
+```
+
+**GOOGLE_CLIENT_ID**, **GOOGLE_CLIENT_SECRET** from Google Cloud Console.
+1. Go to console.cloud.google.com → create a project (or pick an existing one)
+2. APIs & Services → OAuth consent screen → set it up (External user type is fine for personal use; fill in app name, your email)
+3. APIs & Services → Credentials → Create Credentials → OAuth client ID
+4. Application type: Web application
+5. Under Authorized redirect URIs, add:
+- http://localhost:3000/api/auth/callback/google (for local dev)
+- https://your-app.vercel.app/api/auth/callback/google (once deployed)
+6. Click Create — it'll show you the Client ID and Client Secret right there. Copy both into your .env.
+
+## Regarding the database
+Run the following and choose your options
+```
+npx neonctl init
+```
+I got to this
+```
+To finish setting up Neon using Neon's agent-guided onboarding experience,
+have your agent run this shell command: neon init --agent --data
+'{"step":"getting-started","hasConnectionString":true,"framework":"next","orm":"prisma","migrationTool":"prisma","features":["database","auth"]}'
+```
+Run the following
+```
+npx neon-init --agent --data '{"step":"getting-started","hasConnectionString":true,"framework":"next","orm":"prisma","migrationTool":"prisma","features":["database","auth"]}'
+```
 
 ## Deploy (Vercel)
 
