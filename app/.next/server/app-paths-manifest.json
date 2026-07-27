@@ -1,8 +1,5 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/calendar/[weekId]/page": "app/calendar/[weekId]/page.js",
-  "/api/projects/route": "app/api/projects/route.js",
-  "/api/blocks/route": "app/api/blocks/route.js",
+  "/projects/page": "app/projects/page.js",
   "/api/groups/route": "app/api/groups/route.js",
-  "/projects/page": "app/projects/page.js"
+  "/api/projects/route": "app/api/projects/route.js"
 }

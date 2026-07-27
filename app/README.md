@@ -8,7 +8,7 @@ See `CLAUDE.md` for architecture, data model, and conventions.
 cd app
 npm install
 cp .env.example .env       # fill in DATABASE_URL, NEXTAUTH_SECRET, Google OAuth keys
-npx prisma migrate dev --name init
+npx prisma migrate dev --name init # if this fails, paste this in powershell to test: Test-NetConnection ep-bitter-grass-ayljvou6-pooler.c-5.us-east-2.aws.neon.tech -port 5432 (make sure not on any office or school wifi networks that block port 5432)
 npm run dev
 ```
 
