@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
+import { AuthButton } from "@/components/AuthButton";
 
 export const metadata: Metadata = {
   title: "Calendar",
@@ -34,21 +36,24 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen font-sans antialiased">
-        <header className="flex items-center gap-4 border-b border-line px-6 py-3">
-          <span className="text-sm font-semibold">Calendar</span>
-          <nav className="flex gap-3">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm text-graphite hover:text-ink"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </header>
-        {children}
+        <Providers>
+          <header className="flex items-center gap-4 border-b border-line px-6 py-3">
+            <span className="text-sm font-semibold">Calendar</span>
+            <nav className="flex flex-1 gap-3">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-graphite hover:text-ink"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+            <AuthButton />
+          </header>
+          {children}
+        </Providers>
       </body>
     </html>
   );
