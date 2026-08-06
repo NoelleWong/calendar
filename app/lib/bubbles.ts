@@ -77,3 +77,48 @@ export function mergeWeekIntoBubbles(
   }
   return result;
 }
+
+/** One contiguous range of a single day's slots, plus what to do with it. */
+export interface ResizeOp {
+  /** "assign" duplicates the bubble's project onto the range (extension);
+   * "clear" empties the range (shrink). */
+  type: "assign" | "clear";
+  slotIndex: number;
+  slotCount: number;
+}
+
+/**
+ * Diff a bubble's old (startSlot, slotCount) against a proposed new one —
+ * the result of dragging one of its edges — into the underlying per-slot
+ * writes needed to realize it. Per CLAUDE.md, bubbles are never persisted
+ * directly; "extending a pill" is really duplicating the project onto the
+ * newly covered slots, and "shrinking" is clearing the slots given up.
+ *
+ * Handles either edge moving (or, in principle, both) generically by
+ * comparing old/new start and end independently: at most one "assign" and
+ * one "clear" op come back, one per edge that actually changed.
+ */
+export function resizeOps(
+  oldStart: number,
+  oldSlotCount: number,
+  newStart: number,
+  newSlotCount: number
+): ResizeOp[] {
+  const oldEnd = oldStart + oldSlotCount;
+  const newEnd = newStart + newSlotCount;
+  const ops: ResizeOp[] = [];
+
+  if (newStart < oldStart) {
+    ops.push({ type: "assign", slotIndex: newStart, slotCount: oldStart - newStart });
+  } else if (newStart > oldStart) {
+    ops.push({ type: "clear", slotIndex: oldStart, slotCount: newStart - oldStart });
+  }
+
+  if (newEnd > oldEnd) {
+    ops.push({ type: "assign", slotIndex: oldEnd, slotCount: newEnd - oldEnd });
+  } else if (newEnd < oldEnd) {
+    ops.push({ type: "clear", slotIndex: newEnd, slotCount: oldEnd - newEnd });
+  }
+
+  return ops;
+}

@@ -13,6 +13,8 @@ interface CalendarGridProps {
   blocks: MergeableSlot[];
   onBubbleClick?: (bubble: BubbleType) => void;
   onEmptySlotClick?: (dayOfWeek: number, slotIndex: number) => void;
+  /** Enables drag-to-resize on every bubble's edges; omit for read-only grids (e.g. compare). */
+  onBubbleResize?: (bubble: BubbleType, newStartSlot: number, newSlotCount: number) => void;
 }
 
 /**
@@ -26,6 +28,7 @@ export function CalendarGrid({
   blocks,
   onBubbleClick,
   onEmptySlotClick,
+  onBubbleResize,
 }: CalendarGridProps) {
   const bubblesByDay = mergeWeekIntoBubbles(blocks);
 
@@ -94,15 +97,16 @@ export function CalendarGrid({
                     )
                   )}
 
-                  {/* bubbles */}
+                  {/* bubbles — each one self-positions (absolute top/height
+                      from its own startSlot/slotCount) so a resize drag can
+                      preview locally without this grid re-rendering per move */}
                   {bubbles.map((bubble) => (
-                    <div
+                    <Bubble
                       key={`${bubble.projectId}-${bubble.startSlot}`}
-                      className="absolute left-0 right-0"
-                      style={{ top: `${bubble.startSlot * SLOT_HEIGHT_PX}px` }}
-                    >
-                      <Bubble bubble={bubble} onClick={onBubbleClick} />
-                    </div>
+                      bubble={bubble}
+                      onClick={onBubbleClick}
+                      onResize={onBubbleResize}
+                    />
                   ))}
                 </div>
               </div>

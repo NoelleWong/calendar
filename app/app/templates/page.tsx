@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { ProjectPicker } from "@/components/ProjectPicker";
 import { BubbleActionSheet } from "@/components/BubbleActionSheet";
+import { resizeOps } from "@/lib/bubbles";
 import type {
   Bubble,
   ProjectDTO,
@@ -201,6 +202,29 @@ export default function TemplatesPage() {
     setPendingAssignment(null);
   }
 
+  /**
+   * Drag-to-resize commit for the in-memory template editor. Same semantics
+   * as the live calendar's handler (see calendar/[weekId]/page.tsx): extending
+   * duplicates the project onto newly covered slots, shrinking clears the
+   * given-up slots — just applied to local `slots` state instead of the API,
+   * since template edits aren't sent to the server until "Save changes".
+   */
+  function handleResizeBubble(bubble: Bubble, newStartSlot: number, newSlotCount: number) {
+    const ops = resizeOps(bubble.startSlot, bubble.slotCount, newStartSlot, newSlotCount);
+    if (ops.length === 0) return;
+    setSlots((prev) => {
+      let next = prev;
+      for (const op of ops) {
+        next =
+          op.type === "assign"
+            ? assignRange(next, bubble.dayOfWeek, op.slotIndex, op.slotCount, bubble.project)
+            : deleteRange(next, bubble.dayOfWeek, op.slotIndex, op.slotCount);
+      }
+      return next;
+    });
+    setDirty(true);
+  }
+
   function handleDeleteBubble() {
     if (!selectedBubble) return;
     const { dayOfWeek, startSlot, slotCount } = selectedBubble;
@@ -333,6 +357,7 @@ export default function TemplatesPage() {
                     setPendingAssignment({ dayOfWeek, slotIndex, slotCount: 1 })
                   }
                   onBubbleClick={(bubble) => setSelectedBubble(bubble)}
+                  onBubbleResize={handleResizeBubble}
                 />
               </>
             )}

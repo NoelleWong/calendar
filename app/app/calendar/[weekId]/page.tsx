@@ -6,6 +6,7 @@ import { WeekCountsSummary } from "@/components/WeekCountsSummary";
 import { ProjectPicker } from "@/components/ProjectPicker";
 import { BubbleActionSheet } from "@/components/BubbleActionSheet";
 import { countWeek } from "@/lib/counts";
+import { resizeOps } from "@/lib/bubbles";
 import type {
   Bubble,
   CalendarBlockDTO,
@@ -82,6 +83,52 @@ export default function CalendarWeekPage({
     }
   }
 
+  /**
+   * Drag-to-resize commit. "Extending" a pill duplicates its project onto
+   * the newly covered slots (POST upsert — same overwrite semantics as
+   * whole-bubble reassignment); "shrinking" clears the given-up slots
+   * (DELETE). resizeOps diffs old vs. new range into those per-edge writes.
+   */
+  async function handleResizeBubble(bubble: Bubble, newStartSlot: number, newSlotCount: number) {
+    const { dayOfWeek, startSlot, slotCount, projectId } = bubble;
+    const ops = resizeOps(startSlot, slotCount, newStartSlot, newSlotCount);
+    if (ops.length === 0) return;
+    try {
+      for (const op of ops) {
+        const res =
+          op.type === "assign"
+            ? await fetch("/api/blocks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  weekId,
+                  dayOfWeek,
+                  slotIndex: op.slotIndex,
+                  slotCount: op.slotCount,
+                  projectId,
+                }),
+              })
+            : await fetch("/api/blocks", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  weekId,
+                  dayOfWeek,
+                  slotIndex: op.slotIndex,
+                  slotCount: op.slotCount,
+                }),
+              });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error ?? "Failed to resize block");
+        }
+      }
+      await refreshBlocks();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to resize block");
+    }
+  }
+
   async function handleDeleteBubble() {
     if (!selectedBubble) return;
     const { dayOfWeek, startSlot, slotCount } = selectedBubble;
@@ -126,6 +173,7 @@ export default function CalendarWeekPage({
               setPendingAssignment({ dayOfWeek, slotIndex, slotCount: 1 })
             }
             onBubbleClick={(bubble) => setSelectedBubble(bubble)}
+            onBubbleResize={handleResizeBubble}
           />
           <WeekCountsSummary counts={countWeek(weekId, blocks)} />
         </div>
