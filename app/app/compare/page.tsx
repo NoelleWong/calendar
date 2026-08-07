@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { WeekCountsSummary } from "@/components/WeekCountsSummary";
@@ -9,6 +9,14 @@ import type { CalendarBlockDTO } from "@/types";
 
 /** /compare?weeks=2026-W29,2026-W30 */
 export default function ComparePage() {
+  return (
+    <Suspense fallback={null}>
+      <CompareView />
+    </Suspense>
+  );
+}
+
+function CompareView() {
   const searchParams = useSearchParams();
   const weekIds = (searchParams.get("weeks") ?? "")
     .split(",")
