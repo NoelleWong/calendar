@@ -32,6 +32,17 @@ interface BubbleProps {
    * not on every intermediate move. Omit for read-only views (e.g. compare).
    */
   onResize?: (bubble: BubbleType, newStartSlot: number, newSlotCount: number) => void;
+  /**
+   * Enables drag-to-move on the bubble's body (grab and drop it at another
+   * time, possibly on another day). Bubble only reports raw pointer
+   * coordinates plus the cursor's offset from the bubble's own top — it has
+   * no visibility into sibling day columns, so CalendarGrid (which owns all
+   * of them) is what translates those into a (dayOfWeek, startSlot) drop
+   * target and renders the cross-day preview. Called on every move once a
+   * small threshold is crossed, and once more on commit (mouseup).
+   */
+  onMovePreview?: (bubble: BubbleType, clientX: number, clientY: number, grabOffsetY: number) => void;
+  onMoveCommit?: (bubble: BubbleType, clientX: number, clientY: number, grabOffsetY: number) => void;
 }
 
 /**
@@ -45,7 +56,7 @@ interface BubbleProps {
  * when resizable, it can preview a drag by adjusting its own top/height
  * without the parent grid re-rendering on every mouse move.
  */
-export function Bubble({ bubble, onClick, onResize }: BubbleProps) {
+export function Bubble({ bubble, onClick, onResize, onMovePreview, onMoveCommit }: BubbleProps) {
   const color = resolveGroupColor(bubble.project);
   const textColor = contrastTextColor(color);
 
@@ -129,6 +140,45 @@ export function Bubble({ bubble, onClick, onResize }: BubbleProps) {
     window.addEventListener("mouseup", handleMouseUp);
   }
 
+  /**
+   * Grab-and-drop on the pill body. Unlike beginResize, this component never
+   * previews the drop itself — startSlot/dayOfWeek changing together is a
+   * cross-column concern CalendarGrid owns — so this just forwards raw
+   * coordinates upward once movement clears a small threshold (so a plain
+   * click still passes through untouched).
+   */
+  function handleBodyMouseDown(e: React.MouseEvent<HTMLButtonElement>) {
+    if (!onMovePreview && !onMoveCommit) return;
+    const grabOffsetY = e.clientY - e.currentTarget.getBoundingClientRect().top;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
+
+    function handleMouseMove(ev: MouseEvent) {
+      if (!moved) {
+        if (Math.abs(ev.clientX - startX) < 4 && Math.abs(ev.clientY - startY) < 4) return;
+        moved = true;
+        document.body.style.cursor = "grabbing";
+        document.body.style.userSelect = "none";
+      }
+      onMovePreview?.(bubble, ev.clientX, ev.clientY, grabOffsetY);
+    }
+
+    function handleMouseUp(ev: MouseEvent) {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      if (moved) {
+        suppressClickRef.current = true; // a mouseup far from the pill can still bubble a click
+        onMoveCommit?.(bubble, ev.clientX, ev.clientY, grabOffsetY);
+      }
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }
+
   function handleClick() {
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
@@ -145,7 +195,10 @@ export function Bubble({ bubble, onClick, onResize }: BubbleProps) {
       <button
         type="button"
         onClick={handleClick}
-        className="group relative flex w-full items-center justify-center overflow-hidden rounded-bubble px-2 text-left transition-transform hover:scale-[1.02] focus-visible:scale-[1.02]"
+        onMouseDown={handleBodyMouseDown}
+        className={`group relative flex w-full items-center justify-center overflow-hidden rounded-bubble px-2 text-left transition-transform hover:scale-[1.02] focus-visible:scale-[1.02] ${
+          onMovePreview || onMoveCommit ? "cursor-grab active:cursor-grabbing" : ""
+        }`}
         style={{
           height: `${heightPx}px`,
           backgroundColor: color,

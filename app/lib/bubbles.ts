@@ -1,3 +1,4 @@
+import { SLOTS_PER_DAY } from "@/types";
 import type { Bubble, ProjectDTO } from "@/types";
 
 /**
@@ -121,4 +122,45 @@ export function resizeOps(
   }
 
   return ops;
+}
+
+/**
+ * Find the free run of `length` consecutive slots (within one day) closest
+ * to `preferredStart`, for placing a duplicated bubble. `occupied` is every
+ * taken slotIndex in that day — including the bubble being duplicated, so
+ * the copy never lands on top of the original. Ties (equally close before
+ * vs. after) prefer the run starting at or after `preferredStart`.
+ *
+ * Returns null if no run of that length is free anywhere in the day.
+ */
+export function findFreeRun(
+  occupied: ReadonlySet<number>,
+  length: number,
+  preferredStart: number
+): number | null {
+  let best: number | null = null;
+  let bestDist = Infinity;
+
+  for (let start = 0; start + length <= SLOTS_PER_DAY; start++) {
+    let free = true;
+    for (let i = 0; i < length; i++) {
+      if (occupied.has(start + i)) {
+        free = false;
+        break;
+      }
+    }
+    if (!free) continue;
+
+    const dist = Math.abs(start - preferredStart);
+    const better =
+      best === null ||
+      dist < bestDist ||
+      (dist === bestDist && start >= preferredStart && best < preferredStart);
+    if (better) {
+      best = start;
+      bestDist = dist;
+    }
+  }
+
+  return best;
 }

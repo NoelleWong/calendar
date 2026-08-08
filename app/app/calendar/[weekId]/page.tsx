@@ -5,8 +5,8 @@ import { CalendarGrid } from "@/components/CalendarGrid";
 import { WeekCountsSummary } from "@/components/WeekCountsSummary";
 import { ProjectPicker } from "@/components/ProjectPicker";
 import { BubbleActionSheet } from "@/components/BubbleActionSheet";
-import { countWeek } from "@/lib/counts";
-import { resizeOps } from "@/lib/bubbles";
+import { countWeek, formatSlotDuration } from "@/lib/counts";
+import { resizeOps, findFreeRun } from "@/lib/bubbles";
 import type {
   Bubble,
   CalendarBlockDTO,
@@ -129,6 +129,88 @@ export default function CalendarWeekPage({
     }
   }
 
+  /**
+   * Copies the bubble's project into the nearest free run of the same
+   * length on the same day (findFreeRun) — never overwrites another
+   * bubble, unlike resize/move, since there's no drag gesture pinpointing
+   * where the user wants the copy.
+   */
+  async function handleDuplicateBubble() {
+    if (!selectedBubble) return;
+    const bubble = selectedBubble;
+    setSelectedBubble(null);
+    const occupied = new Set(
+      blocks.filter((b) => b.dayOfWeek === bubble.dayOfWeek).map((b) => b.slotIndex)
+    );
+    const start = findFreeRun(occupied, bubble.slotCount, bubble.startSlot);
+    if (start === null) {
+      setError(
+        `No free ${formatSlotDuration(bubble.slotCount)} run left on that day to duplicate into.`
+      );
+      return;
+    }
+    try {
+      const res = await fetch("/api/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekId,
+          dayOfWeek: bubble.dayOfWeek,
+          slotIndex: start,
+          slotCount: bubble.slotCount,
+          projectId: bubble.projectId,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to duplicate block");
+      }
+      await refreshBlocks();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to duplicate block");
+    }
+  }
+
+  /**
+   * Drag-to-move commit: clear the bubble's old range, then assign its
+   * project onto the new range (possibly on a different day). Mirrors
+   * resize's "extending duplicates the project" semantics — dropping onto
+   * occupied slots overwrites them, same as every other reassignment path.
+   */
+  async function handleMoveBubble(bubble: Bubble, newDayOfWeek: number, newStartSlot: number) {
+    const { dayOfWeek, startSlot, slotCount, projectId } = bubble;
+    if (newDayOfWeek === dayOfWeek && newStartSlot === startSlot) return;
+    try {
+      const deleteRes = await fetch("/api/blocks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekId, dayOfWeek, slotIndex: startSlot, slotCount }),
+      });
+      if (!deleteRes.ok) {
+        const body = await deleteRes.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to move block");
+      }
+      const assignRes = await fetch("/api/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekId,
+          dayOfWeek: newDayOfWeek,
+          slotIndex: newStartSlot,
+          slotCount,
+          projectId,
+        }),
+      });
+      if (!assignRes.ok) {
+        const body = await assignRes.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to move block");
+      }
+      await refreshBlocks();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to move block");
+    }
+  }
+
   async function handleDeleteBubble() {
     if (!selectedBubble) return;
     const { dayOfWeek, startSlot, slotCount } = selectedBubble;
@@ -174,6 +256,7 @@ export default function CalendarWeekPage({
             }
             onBubbleClick={(bubble) => setSelectedBubble(bubble)}
             onBubbleResize={handleResizeBubble}
+            onBubbleMove={handleMoveBubble}
           />
           <WeekCountsSummary counts={countWeek(weekId, blocks)} />
         </div>
@@ -198,6 +281,7 @@ export default function CalendarWeekPage({
             });
             setSelectedBubble(null);
           }}
+          onDuplicate={handleDuplicateBubble}
           onDelete={handleDeleteBubble}
           onClose={() => setSelectedBubble(null)}
         />

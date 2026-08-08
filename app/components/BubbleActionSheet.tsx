@@ -16,6 +16,9 @@ interface BubbleActionSheetProps {
   bubble: Bubble;
   onChangeWholeProject: () => void;
   onSplit: (result: SplitResult) => void;
+  /** Copies this bubble's project into the nearest free run of the same
+   * length on the same day. Omit to hide the action. */
+  onDuplicate?: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
@@ -37,6 +40,7 @@ export function BubbleActionSheet({
   bubble,
   onChangeWholeProject,
   onSplit,
+  onDuplicate,
   onDelete,
   onClose,
 }: BubbleActionSheetProps) {
@@ -92,6 +96,15 @@ export function BubbleActionSheet({
                   className="rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
                 >
                   Split…
+                </button>
+              )}
+              {onDuplicate && (
+                <button
+                  type="button"
+                  onClick={onDuplicate}
+                  className="rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
+                >
+                  Duplicate
                 </button>
               )}
               <button

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { ProjectPicker } from "@/components/ProjectPicker";
 import { BubbleActionSheet } from "@/components/BubbleActionSheet";
-import { resizeOps } from "@/lib/bubbles";
+import { resizeOps, findFreeRun } from "@/lib/bubbles";
+import { formatSlotDuration } from "@/lib/counts";
 import type {
   Bubble,
   ProjectDTO,
@@ -225,6 +226,43 @@ export default function TemplatesPage() {
     setDirty(true);
   }
 
+  /**
+   * Copies the bubble's project into the nearest free run of the same
+   * length on the same day, in the local `slots` state — same placement
+   * logic as the live calendar's duplicate handler.
+   */
+  function handleDuplicateBubble() {
+    if (!selectedBubble) return;
+    const bubble = selectedBubble;
+    setSelectedBubble(null);
+    const occupied = new Set(
+      slots.filter((s) => s.dayOfWeek === bubble.dayOfWeek).map((s) => s.slotIndex)
+    );
+    const start = findFreeRun(occupied, bubble.slotCount, bubble.startSlot);
+    if (start === null) {
+      setError(
+        `No free ${formatSlotDuration(bubble.slotCount)} run left on that day to duplicate into.`
+      );
+      return;
+    }
+    setSlots((prev) => assignRange(prev, bubble.dayOfWeek, start, bubble.slotCount, bubble.project));
+    setDirty(true);
+  }
+
+  /**
+   * Drag-to-move commit: clear the bubble's old range, then assign its
+   * project onto the new range (possibly a different day) — mirrors the
+   * live calendar's handler but against local `slots` state.
+   */
+  function handleMoveBubble(bubble: Bubble, newDayOfWeek: number, newStartSlot: number) {
+    if (newDayOfWeek === bubble.dayOfWeek && newStartSlot === bubble.startSlot) return;
+    setSlots((prev) => {
+      const cleared = deleteRange(prev, bubble.dayOfWeek, bubble.startSlot, bubble.slotCount);
+      return assignRange(cleared, newDayOfWeek, newStartSlot, bubble.slotCount, bubble.project);
+    });
+    setDirty(true);
+  }
+
   function handleDeleteBubble() {
     if (!selectedBubble) return;
     const { dayOfWeek, startSlot, slotCount } = selectedBubble;
@@ -358,6 +396,7 @@ export default function TemplatesPage() {
                   }
                   onBubbleClick={(bubble) => setSelectedBubble(bubble)}
                   onBubbleResize={handleResizeBubble}
+                  onBubbleMove={handleMoveBubble}
                 />
               </>
             )}
@@ -384,6 +423,7 @@ export default function TemplatesPage() {
             });
             setSelectedBubble(null);
           }}
+          onDuplicate={handleDuplicateBubble}
           onDelete={handleDeleteBubble}
           onClose={() => setSelectedBubble(null)}
         />
