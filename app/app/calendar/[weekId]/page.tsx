@@ -7,6 +7,7 @@ import { ProjectPicker } from "@/components/ProjectPicker";
 import { BubbleActionSheet } from "@/components/BubbleActionSheet";
 import { countWeek, formatSlotDuration } from "@/lib/counts";
 import { resizeOps, findFreeRun } from "@/lib/bubbles";
+import { DAYS_PER_WEEK } from "@/types";
 import type {
   Bubble,
   CalendarBlockDTO,
@@ -130,22 +131,24 @@ export default function CalendarWeekPage({
   }
 
   /**
-   * Copies the bubble's project into the nearest free run of the same
-   * length on the same day (findFreeRun) — never overwrites another
-   * bubble, unlike resize/move, since there's no drag gesture pinpointing
-   * where the user wants the copy.
+   * Copies the bubble's project to the same timeslot on the next day by
+   * default (wrapping Sun → Mon); if that exact range isn't free, falls
+   * back to the nearest free run of the same length on that same next day
+   * (findFreeRun) rather than overwriting anything — there's no drag
+   * gesture pinpointing where the user wants the copy, unlike resize/move.
    */
   async function handleDuplicateBubble() {
     if (!selectedBubble) return;
     const bubble = selectedBubble;
     setSelectedBubble(null);
+    const targetDay = (bubble.dayOfWeek + 1) % DAYS_PER_WEEK;
     const occupied = new Set(
-      blocks.filter((b) => b.dayOfWeek === bubble.dayOfWeek).map((b) => b.slotIndex)
+      blocks.filter((b) => b.dayOfWeek === targetDay).map((b) => b.slotIndex)
     );
     const start = findFreeRun(occupied, bubble.slotCount, bubble.startSlot);
     if (start === null) {
       setError(
-        `No free ${formatSlotDuration(bubble.slotCount)} run left on that day to duplicate into.`
+        `No free ${formatSlotDuration(bubble.slotCount)} run left on the next day to duplicate into.`
       );
       return;
     }
@@ -155,7 +158,7 @@ export default function CalendarWeekPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           weekId,
-          dayOfWeek: bubble.dayOfWeek,
+          dayOfWeek: targetDay,
           slotIndex: start,
           slotCount: bubble.slotCount,
           projectId: bubble.projectId,

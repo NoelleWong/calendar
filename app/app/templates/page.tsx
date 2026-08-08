@@ -6,6 +6,7 @@ import { ProjectPicker } from "@/components/ProjectPicker";
 import { BubbleActionSheet } from "@/components/BubbleActionSheet";
 import { resizeOps, findFreeRun } from "@/lib/bubbles";
 import { formatSlotDuration } from "@/lib/counts";
+import { DAYS_PER_WEEK } from "@/types";
 import type {
   Bubble,
   ProjectDTO,
@@ -227,25 +228,27 @@ export default function TemplatesPage() {
   }
 
   /**
-   * Copies the bubble's project into the nearest free run of the same
-   * length on the same day, in the local `slots` state — same placement
-   * logic as the live calendar's duplicate handler.
+   * Copies the bubble's project to the same timeslot on the next day by
+   * default (wrapping Sun → Mon), falling back to the nearest free run on
+   * that same next day if the exact slot is taken — same placement logic
+   * as the live calendar's duplicate handler, applied to local `slots`.
    */
   function handleDuplicateBubble() {
     if (!selectedBubble) return;
     const bubble = selectedBubble;
     setSelectedBubble(null);
+    const targetDay = (bubble.dayOfWeek + 1) % DAYS_PER_WEEK;
     const occupied = new Set(
-      slots.filter((s) => s.dayOfWeek === bubble.dayOfWeek).map((s) => s.slotIndex)
+      slots.filter((s) => s.dayOfWeek === targetDay).map((s) => s.slotIndex)
     );
     const start = findFreeRun(occupied, bubble.slotCount, bubble.startSlot);
     if (start === null) {
       setError(
-        `No free ${formatSlotDuration(bubble.slotCount)} run left on that day to duplicate into.`
+        `No free ${formatSlotDuration(bubble.slotCount)} run left on the next day to duplicate into.`
       );
       return;
     }
-    setSlots((prev) => assignRange(prev, bubble.dayOfWeek, start, bubble.slotCount, bubble.project));
+    setSlots((prev) => assignRange(prev, targetDay, start, bubble.slotCount, bubble.project));
     setDirty(true);
   }
 
