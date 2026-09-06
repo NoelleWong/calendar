@@ -3,4 +3,3 @@ app/.env
 *.gz.old
 .vercel
 .env*
-.next
