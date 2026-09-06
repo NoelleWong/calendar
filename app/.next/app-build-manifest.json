@@ -1,20 +1,25 @@
 {
   "pages": {
+    "/calendar/[weekId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/calendar/[weekId]/page.js"
+    ],
     "/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/calendar/[weekId]/page": [
+    "/projects/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/calendar/[weekId]/page.js"
+      "static/chunks/app/projects/page.js"
     ],
-    "/_not-found/page": [
+    "/templates/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/templates/page.js"
     ]
   }
 }

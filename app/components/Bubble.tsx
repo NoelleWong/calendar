@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { resolveGroupColor, contrastTextColor } from "@/lib/colors";
+import { resolveGroupColor } from "@/lib/colors";
 import { formatSlotDuration } from "@/lib/counts";
 import type { Bubble as BubbleType } from "@/types";
 
@@ -9,6 +9,7 @@ const SLOT_HEIGHT_PX = 24; // must match CalendarGrid's SLOT_HEIGHT_PX
 const GAP_PX = 3; // fixed-width gap between bubbles, per CLAUDE.md decisions log
 const SLOTS_PER_DAY = 48;
 const HANDLE_PX = 6; // height of the invisible drag-to-resize strip at each edge
+const PILL_WIDTH_CLASS = "w-1/6"; // color bar is a narrow flush-left indicator; the label reads to its right
 
 interface DragState {
   edge: "top" | "bottom";
@@ -46,11 +47,13 @@ interface BubbleProps {
 }
 
 /**
- * One project's contiguous run of slots, rendered as a rounded pill.
+ * One project's contiguous run of slots. Rendered as a narrow rounded color
+ * bar flush against the left edge of the day column (indicating the
+ * project's group — see lib/colors.ts) with the project name reading to its
+ * right, rather than a full-width pill with the label crammed inside.
  * Height is proportional to slotCount (duration); the fixed-width gap is
  * subtracted from the height (not scaled), so short 30-min bubbles aren't
- * visually swallowed by the gap. Color always comes from the project's
- * group — see lib/colors.ts.
+ * visually swallowed by the gap.
  *
  * Self-positions absolutely (top + height from startSlot/slotCount) so that,
  * when resizable, it can preview a drag by adjusting its own top/height
@@ -58,7 +61,6 @@ interface BubbleProps {
  */
 export function Bubble({ bubble, onClick, onResize, onMovePreview, onMoveCommit }: BubbleProps) {
   const color = resolveGroupColor(bubble.project);
-  const textColor = contrastTextColor(color);
 
   // Live preview shown while dragging; null when not dragging (falls back to
   // the authoritative bubble prop).
@@ -69,7 +71,6 @@ export function Bubble({ bubble, onClick, onResize, onMovePreview, onMoveCommit 
   const startSlot = preview?.startSlot ?? bubble.startSlot;
   const slotCount = preview?.slotCount ?? bubble.slotCount;
   const heightPx = slotCount * SLOT_HEIGHT_PX - GAP_PX;
-  const showLabel = slotCount >= 2; // 30-min bubbles too short for a label
 
   function beginResize(edge: "top" | "bottom", e: React.MouseEvent) {
     if (!onResize) return;
@@ -196,38 +197,41 @@ export function Bubble({ bubble, onClick, onResize, onMovePreview, onMoveCommit 
         type="button"
         onClick={handleClick}
         onMouseDown={handleBodyMouseDown}
-        className={`group relative flex w-full items-center justify-center overflow-hidden rounded-bubble px-2 text-left transition-transform hover:scale-[1.02] focus-visible:scale-[1.02] ${
+        className={`group relative flex h-full w-full items-center overflow-hidden text-left ${
           onMovePreview || onMoveCommit ? "cursor-grab active:cursor-grabbing" : ""
         }`}
-        style={{
-          height: `${heightPx}px`,
-          backgroundColor: color,
-          color: textColor,
-        }}
         title={`${bubble.project.name} — ${formatSlotDuration(bubble.slotCount)}`}
       >
-        {showLabel && (
-          <span className="truncate text-xs font-medium leading-tight">
-            {bubble.project.name}
-          </span>
-        )}
+        {/* narrow color bar — the actual "pill" — flush left, full height */}
+        <span
+          className={`relative block h-full shrink-0 rounded-bubble transition-transform group-hover:scale-[1.05] ${PILL_WIDTH_CLASS}`}
+          style={{ height: `${heightPx}px`, backgroundColor: color }}
+        >
+          {onResize && (
+            <>
+              <span
+                onMouseDown={(e) => beginResize("top", e)}
+                className="absolute inset-x-0 top-0 cursor-ns-resize opacity-0 hover:bg-black/10 group-hover:opacity-100"
+                style={{ height: `${HANDLE_PX}px` }}
+                aria-hidden="true"
+              />
+              <span
+                onMouseDown={(e) => beginResize("bottom", e)}
+                className="absolute inset-x-0 bottom-0 cursor-ns-resize opacity-0 hover:bg-black/10 group-hover:opacity-100"
+                style={{ height: `${HANDLE_PX}px` }}
+                aria-hidden="true"
+              />
+            </>
+          )}
+        </span>
 
-        {onResize && (
-          <>
-            <span
-              onMouseDown={(e) => beginResize("top", e)}
-              className="absolute inset-x-0 top-0 cursor-ns-resize opacity-0 hover:bg-black/10 group-hover:opacity-100"
-              style={{ height: `${HANDLE_PX}px` }}
-              aria-hidden="true"
-            />
-            <span
-              onMouseDown={(e) => beginResize("bottom", e)}
-              className="absolute inset-x-0 bottom-0 cursor-ns-resize opacity-0 hover:bg-black/10 group-hover:opacity-100"
-              style={{ height: `${HANDLE_PX}px` }}
-              aria-hidden="true"
-            />
-          </>
-        )}
+        {/* project name reads to the right of the color bar, tinted to match it */}
+        <span
+          className="ml-1.5 min-w-0 flex-1 truncate text-xs font-medium leading-tight"
+          style={{ color }}
+        >
+          {bubble.project.name}
+        </span>
       </button>
     </div>
   );
