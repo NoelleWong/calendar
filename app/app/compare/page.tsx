@@ -63,7 +63,7 @@ function CompareView() {
 
   if (weekIds.length === 0) {
     return (
-      <main className="p-6">
+      <main className="p-4 sm:p-6">
         <p className="text-sm text-graphite">
           Add one or more weeks to compare, e.g.{" "}
           <code className="font-mono">/compare?weeks=2026-W29,2026-W30</code>
@@ -77,7 +77,7 @@ function CompareView() {
   );
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <h1 className="mb-4 text-lg font-semibold">Compare weeks</h1>
       {loading ? (
         <p className="text-sm text-graphite">Loading…</p>

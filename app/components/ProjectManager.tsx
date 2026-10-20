@@ -56,7 +56,7 @@ export function ProjectManager({
             key={project.id}
             className="flex items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <span
                 className="h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: project.group.color }}
@@ -67,12 +67,12 @@ export function ProjectManager({
                   const next = e.currentTarget.value.trim();
                   if (next && next !== project.name) onUpdate(project.id, { name: next });
                 }}
-                className="bg-transparent text-sm outline-none focus-visible:ring-1 focus-visible:ring-ink rounded px-1"
+                className="min-w-0 rounded bg-transparent px-1 text-base outline-none focus-visible:ring-1 focus-visible:ring-ink sm:text-sm"
               />
               <select
                 value={project.groupId}
                 onChange={(e) => onUpdate(project.id, { groupId: e.target.value })}
-                className="rounded border border-line bg-surface px-1 py-0.5 text-xs"
+                className="rounded border border-line bg-surface px-1 py-0.5 text-base sm:text-xs"
               >
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>
@@ -99,11 +99,11 @@ export function ProjectManager({
         )}
       </ul>
 
-      <div className="flex items-center gap-3 rounded-md border border-dashed border-line px-3 py-2">
+      <div className="flex flex-wrap items-center gap-3 rounded-md border border-dashed border-line px-3 py-2">
         <select
           value={newGroupId}
           onChange={(e) => setNewGroupId(e.target.value)}
-          className="rounded border border-line bg-surface px-1 py-0.5 text-xs"
+          className="rounded border border-line bg-surface px-1 py-0.5 text-base sm:text-xs"
           disabled={groups.length === 0}
         >
           {groups.length === 0 && <option>Create a group first</option>}
@@ -119,7 +119,7 @@ export function ProjectManager({
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           placeholder="New project name"
           disabled={groups.length === 0}
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-graphite disabled:opacity-40"
+          className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-graphite disabled:opacity-40 sm:text-sm"
         />
         <button
           type="button"

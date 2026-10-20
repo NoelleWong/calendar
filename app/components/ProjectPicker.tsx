@@ -32,7 +32,7 @@ export function ProjectPicker({ open, groups, projects, onSelect, onClose }: Pro
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/20"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/20 sm:items-center"
       onClick={onClose}
     >
       <div
@@ -40,7 +40,7 @@ export function ProjectPicker({ open, groups, projects, onSelect, onClose }: Pro
         aria-modal="true"
         aria-label={selectedGroup ? `Choose project in ${selectedGroup.name}` : "Choose project group"}
         onClick={(e) => e.stopPropagation()}
-        className="w-72 rounded-lg border border-line bg-surface p-4 shadow-lg"
+        className="max-h-[85vh] w-full overflow-y-auto rounded-t-lg border border-line bg-surface p-4 shadow-lg sm:w-72 sm:rounded-lg"
       >
         {!selectedGroup ? (
           <>
@@ -49,7 +49,7 @@ export function ProjectPicker({ open, groups, projects, onSelect, onClose }: Pro
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs text-graphite hover:text-ink"
+                className="-m-2 p-2 text-xs text-graphite hover:text-ink"
                 aria-label="Cancel"
               >
                 ✕
@@ -61,7 +61,7 @@ export function ProjectPicker({ open, groups, projects, onSelect, onClose }: Pro
                   <button
                     type="button"
                     onClick={() => setSelectedGroupId(group.id)}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2.5 text-left text-sm hover:bg-canvas sm:py-1.5"
                   >
                     <span
                       className="h-3 w-3 rounded-full flex-shrink-0"
@@ -84,14 +84,14 @@ export function ProjectPicker({ open, groups, projects, onSelect, onClose }: Pro
               <button
                 type="button"
                 onClick={() => setSelectedGroupId(null)}
-                className="flex items-center gap-1 text-xs text-graphite hover:text-ink"
+                className="-m-2 flex items-center gap-1 p-2 text-xs text-graphite hover:text-ink"
               >
                 ← Back
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs text-graphite hover:text-ink"
+                className="-m-2 p-2 text-xs text-graphite hover:text-ink"
                 aria-label="Cancel"
               >
                 ✕
@@ -110,7 +110,7 @@ export function ProjectPicker({ open, groups, projects, onSelect, onClose }: Pro
                   <button
                     type="button"
                     onClick={() => onSelect(project.id)}
-                    className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
+                    className="w-full rounded-md px-2 py-2.5 text-left text-sm hover:bg-canvas sm:py-1.5"
                   >
                     {project.name}
                   </button>

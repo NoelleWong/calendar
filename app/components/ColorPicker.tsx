@@ -27,7 +27,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   const [customOpen, setCustomOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {PRESET_COLORS.map((color) => (
         <button
           key={color}

@@ -4,6 +4,11 @@ import type { Config } from "tailwindcss";
 // marketing page: chrome stays quiet and neutral so user-defined project
 // colors (the actual content) are what carries visual weight.
 const config: Config = {
+  // Only apply `hover:` styles on devices that can actually hover, so a tap
+  // on a phone doesn't leave a button stuck in its hover state.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {

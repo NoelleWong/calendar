@@ -55,7 +55,7 @@ export function GroupManager({ groups, onCreate, onUpdate, onDelete }: GroupMana
             key={group.id}
             className="flex items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <ColorPicker
                 value={group.color}
                 onChange={(color) => onUpdate(group.id, { color })}
@@ -66,7 +66,7 @@ export function GroupManager({ groups, onCreate, onUpdate, onDelete }: GroupMana
                   const next = e.currentTarget.value.trim();
                   if (next && next !== group.name) onUpdate(group.id, { name: next });
                 }}
-                className="bg-transparent text-sm outline-none focus-visible:ring-1 focus-visible:ring-ink rounded px-1"
+                className="min-w-0 rounded bg-transparent px-1 text-base outline-none focus-visible:ring-1 focus-visible:ring-ink sm:text-sm"
               />
               <span className="text-xs text-graphite">
                 {group._count.projects} project{group._count.projects === 1 ? "" : "s"}
@@ -86,14 +86,14 @@ export function GroupManager({ groups, onCreate, onUpdate, onDelete }: GroupMana
         )}
       </ul>
 
-      <div className="flex items-center gap-3 rounded-md border border-dashed border-line px-3 py-2">
+      <div className="flex flex-wrap items-center gap-3 rounded-md border border-dashed border-line px-3 py-2">
         <ColorPicker value={newColor} onChange={setNewColor} />
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           placeholder="New group name"
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-graphite"
+          className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-graphite sm:text-sm"
         />
         <button
           type="button"
