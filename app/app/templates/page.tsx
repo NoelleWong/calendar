@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { ProjectPicker } from "@/components/ProjectPicker";
 import { BubbleActionSheet } from "@/components/BubbleActionSheet";
+import { RotationManager } from "@/components/RotationManager";
 import { resizeOps, findFreeRun } from "@/lib/bubbles";
 import { formatSlotDuration } from "@/lib/counts";
 import { DAYS_PER_WEEK } from "@/types";
@@ -275,13 +276,17 @@ export default function TemplatesPage() {
   }
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
+  // Stable between refreshes, so RotationManager only refetches when templates actually reload.
+  const templateRefs = useMemo(() => templates.map((t) => ({ id: t.id, name: t.name })), [templates]);
 
   return (
     <main className="p-4 sm:p-6">
       <h1 className="mb-1 text-lg font-semibold">Templates</h1>
       <p className="mb-6 text-sm text-graphite">
-        Edit a template&apos;s default week, then save. New weeks are populated
-        from whichever template is marked Default.
+        Edit a template&apos;s week, then save. New weeks are filled from your
+        rotation (below), or from the template marked Default for weeks no
+        rotation covers. Editing a week on the calendar never changes its
+        template.
       </p>
 
       {error && (
@@ -296,115 +301,122 @@ export default function TemplatesPage() {
       {loading ? (
         <p className="text-sm text-graphite">Loading…</p>
       ) : (
-        <div className="flex flex-col items-stretch gap-8 lg:flex-row lg:items-start">
-          {/* Template list */}
-          <div className="w-full flex-shrink-0 lg:w-56">
-            <ul className="mb-3 flex flex-col gap-1">
-              {templates.map((t) => (
-                <li
-                  key={t.id}
-                  className={`flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm sm:py-1.5 ${
-                    t.id === selectedTemplateId ? "bg-canvas" : "hover:bg-canvas"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => selectTemplate(t)}
-                    className="flex-1 truncate text-left"
-                  >
-                    {t.name}
-                    {t.isDefault && (
-                      <span className="ml-1.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        Default
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteTemplate(t.id)}
-                    className="-m-1.5 p-1.5 text-xs text-graphite hover:text-ink"
-                    aria-label={`Delete ${t.name}`}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-              {templates.length === 0 && (
-                <li className="text-sm text-graphite">No templates yet.</li>
-              )}
-            </ul>
-
-            <div className="flex items-center gap-1 rounded-md border border-dashed border-line px-2 py-1.5">
-              <input
-                value={newTemplateName}
-                onChange={(e) => setNewTemplateName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreateTemplate()}
-                placeholder="New template name"
-                className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-graphite sm:text-sm"
-              />
-              <button
-                type="button"
-                onClick={handleCreateTemplate}
-                disabled={!newTemplateName.trim()}
-                className="rounded bg-ink px-2 py-1 text-xs font-medium text-white disabled:opacity-40"
-              >
-                Add
-              </button>
-            </div>
+        <>
+          <div className="mb-8 max-w-2xl">
+            <RotationManager templates={templateRefs} />
           </div>
 
-          {/* Editor */}
-          <div className="min-w-0 flex-1">
-            {!selectedTemplate ? (
-              <p className="text-sm text-graphite">
-                Select a template on the left to edit it, or create a new one.
-              </p>
-            ) : (
-              <>
-                <div className="mb-3 flex flex-wrap items-center gap-3">
-                  <input
-                    defaultValue={selectedTemplate.name}
-                    onBlur={(e) => {
-                      const next = e.currentTarget.value.trim();
-                      if (next && next !== selectedTemplate.name) {
-                        handleRename(selectedTemplate.id, next);
-                      }
-                    }}
-                    className="min-w-0 rounded border border-line bg-surface px-2 py-1 text-base outline-none focus-visible:ring-1 focus-visible:ring-ink sm:text-sm"
-                  />
-                  {!selectedTemplate.isDefault && (
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-graphite">Templates</h2>
+          <div className="flex flex-col items-stretch gap-8 lg:flex-row lg:items-start">
+            {/* Template list */}
+            <div className="w-full flex-shrink-0 lg:w-56">
+              <ul className="mb-3 flex flex-col gap-1">
+                {templates.map((t) => (
+                  <li
+                    key={t.id}
+                    className={`flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm sm:py-1.5 ${
+                      t.id === selectedTemplateId ? "bg-canvas" : "hover:bg-canvas"
+                    }`}
+                  >
                     <button
                       type="button"
-                      onClick={() => handleSetDefault(selectedTemplate.id)}
-                      className="rounded border border-line px-2 py-1 text-xs hover:bg-canvas"
+                      onClick={() => selectTemplate(t)}
+                      className="flex-1 truncate text-left"
                     >
-                      Set as default
+                      {t.name}
+                      {t.isDefault && (
+                        <span className="ml-1.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-medium text-white">
+                          Default
+                        </span>
+                      )}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={!dirty}
-                    className="rounded bg-ink px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
-                  >
-                    {dirty ? "Save changes" : "Saved"}
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTemplate(t.id)}
+                      className="-m-1.5 p-1.5 text-xs text-graphite hover:text-ink"
+                      aria-label={`Delete ${t.name}`}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+                {templates.length === 0 && (
+                  <li className="text-sm text-graphite">No templates yet.</li>
+                )}
+              </ul>
 
-                <CalendarGrid
-                  weekId={selectedTemplate.name}
-                  blocks={slots}
-                  onEmptySlotClick={(dayOfWeek, slotIndex) =>
-                    setPendingAssignment({ dayOfWeek, slotIndex, slotCount: 1 })
-                  }
-                  onBubbleClick={(bubble) => setSelectedBubble(bubble)}
-                  onBubbleResize={handleResizeBubble}
-                  onBubbleMove={handleMoveBubble}
+              <div className="flex items-center gap-1 rounded-md border border-dashed border-line px-2 py-1.5">
+                <input
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreateTemplate()}
+                  placeholder="New template name"
+                  className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-graphite sm:text-sm"
                 />
-              </>
-            )}
+                <button
+                  type="button"
+                  onClick={handleCreateTemplate}
+                  disabled={!newTemplateName.trim()}
+                  className="rounded bg-ink px-2 py-1 text-xs font-medium text-white disabled:opacity-40"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Editor */}
+            <div className="min-w-0 flex-1">
+              {!selectedTemplate ? (
+                <p className="text-sm text-graphite">
+                  Select a template on the left to edit it, or create a new one.
+                </p>
+              ) : (
+                <>
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
+                    <input
+                      defaultValue={selectedTemplate.name}
+                      onBlur={(e) => {
+                        const next = e.currentTarget.value.trim();
+                        if (next && next !== selectedTemplate.name) {
+                          handleRename(selectedTemplate.id, next);
+                        }
+                      }}
+                      className="min-w-0 rounded border border-line bg-surface px-2 py-1 text-base outline-none focus-visible:ring-1 focus-visible:ring-ink sm:text-sm"
+                    />
+                    {!selectedTemplate.isDefault && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetDefault(selectedTemplate.id)}
+                        className="rounded border border-line px-2 py-1 text-xs hover:bg-canvas"
+                      >
+                        Set as default
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={!dirty}
+                      className="rounded bg-ink px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+                    >
+                      {dirty ? "Save changes" : "Saved"}
+                    </button>
+                  </div>
+
+                  <CalendarGrid
+                    weekId={selectedTemplate.name}
+                    blocks={slots}
+                    onEmptySlotClick={(dayOfWeek, slotIndex) =>
+                      setPendingAssignment({ dayOfWeek, slotIndex, slotCount: 1 })
+                    }
+                    onBubbleClick={(bubble) => setSelectedBubble(bubble)}
+                    onBubbleResize={handleResizeBubble}
+                    onBubbleMove={handleMoveBubble}
+                  />
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {selectedBubble && (

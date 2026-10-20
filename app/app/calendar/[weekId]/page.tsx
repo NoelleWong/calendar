@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { WeekCountsSummary } from "@/components/WeekCountsSummary";
 import { ProjectPicker } from "@/components/ProjectPicker";
 import { BubbleActionSheet } from "@/components/BubbleActionSheet";
+import { WeekTemplateBar } from "@/components/WeekTemplateBar";
 import { countWeek, formatSlotDuration } from "@/lib/counts";
 import { resizeOps, findFreeRun } from "@/lib/bubbles";
+import { addWeeks, currentWeekId, formatWeekRange, isValidWeekId } from "@/lib/weeks";
 import { DAYS_PER_WEEK } from "@/types";
 import type {
   Bubble,
   CalendarBlockDTO,
   ProjectGroupWithCount,
   ProjectWithCount,
+  TemplateRef,
+  WeekTemplateInfo,
 } from "@/types";
 
 /** A pending "assign these slots to a project" request, feeding the ProjectPicker. */
@@ -31,6 +36,8 @@ export default function CalendarWeekPage({
   const [blocks, setBlocks] = useState<CalendarBlockDTO[]>([]);
   const [groups, setGroups] = useState<ProjectGroupWithCount[]>([]);
   const [projects, setProjects] = useState<ProjectWithCount[]>([]);
+  const [templates, setTemplates] = useState<TemplateRef[]>([]);
+  const [weekInfo, setWeekInfo] = useState<WeekTemplateInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingAssignment, setPendingAssignment] = useState<PendingAssignment | null>(null);
   const [selectedBubble, setSelectedBubble] = useState<Bubble | null>(null);
@@ -42,6 +49,11 @@ export default function CalendarWeekPage({
     setBlocks(data.blocks ?? []);
   }
 
+  async function refreshWeekInfo() {
+    const res = await fetch(`/api/weeks?weekId=${encodeURIComponent(weekId)}`);
+    setWeekInfo(res.ok ? await res.json() : null);
+  }
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -49,12 +61,18 @@ export default function CalendarWeekPage({
       fetch(`/api/blocks?weekId=${encodeURIComponent(weekId)}`).then((r) => r.json()),
       fetch("/api/groups").then((r) => r.json()),
       fetch("/api/projects").then((r) => r.json()),
+      fetch("/api/templates").then((r) => r.json()),
+      fetch(`/api/weeks?weekId=${encodeURIComponent(weekId)}`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([blocksData, groupsData, projectsData]) => {
+      .then(([blocksData, groupsData, projectsData, templatesData, weekData]) => {
         if (cancelled) return;
         setBlocks(blocksData.blocks ?? []);
         setGroups(groupsData.groups ?? []);
         setProjects(projectsData.projects ?? []);
+        setTemplates(
+          (templatesData.templates ?? []).map((t: TemplateRef) => ({ id: t.id, name: t.name }))
+        );
+        setWeekInfo(weekData);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -214,6 +232,24 @@ export default function CalendarWeekPage({
     }
   }
 
+  /** Replace this week's blocks with a copy of the chosen template (this week only). */
+  async function handleApplyTemplate(templateId: string) {
+    try {
+      const res = await fetch("/api/weeks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekId, templateId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to apply template");
+      }
+      await Promise.all([refreshBlocks(), refreshWeekInfo()]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to apply template");
+    }
+  }
+
   async function handleDeleteBubble() {
     if (!selectedBubble) return;
     const { dayOfWeek, startSlot, slotCount } = selectedBubble;
@@ -234,9 +270,54 @@ export default function CalendarWeekPage({
     }
   }
 
+  if (!isValidWeekId(weekId)) {
+    return (
+      <main className="p-4 sm:p-6">
+        <p className="text-sm text-graphite">
+          &ldquo;{weekId}&rdquo; isn&apos;t a week. Weeks look like 2026-W44 —{" "}
+          <Link href="/calendar" className="underline">
+            go to this week
+          </Link>
+          .
+        </p>
+      </main>
+    );
+  }
+
+  const thisWeek = currentWeekId();
+
   return (
     <main className="p-4 sm:p-6">
-      <h1 className="mb-4 text-lg font-semibold">Week {weekId}</h1>
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="mr-auto">
+          <h1 className="text-lg font-semibold">Week {weekId}</h1>
+          <p className="text-xs text-graphite">{formatWeekRange(weekId)}</p>
+        </div>
+        <nav className="flex items-center gap-1 text-sm" aria-label="Week navigation">
+          <Link
+            href={`/calendar/${addWeeks(weekId, -1)}`}
+            className="rounded border border-line bg-surface px-3 py-1.5 hover:bg-canvas"
+            aria-label="Previous week"
+          >
+            ←
+          </Link>
+          {weekId !== thisWeek && (
+            <Link
+              href={`/calendar/${thisWeek}`}
+              className="rounded border border-line bg-surface px-3 py-1.5 hover:bg-canvas"
+            >
+              This week
+            </Link>
+          )}
+          <Link
+            href={`/calendar/${addWeeks(weekId, 1)}`}
+            className="rounded border border-line bg-surface px-3 py-1.5 hover:bg-canvas"
+            aria-label="Next week"
+          >
+            →
+          </Link>
+        </nav>
+      </div>
 
       {error && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -245,6 +326,15 @@ export default function CalendarWeekPage({
             dismiss
           </button>
         </div>
+      )}
+
+      {!loading && (
+        <WeekTemplateBar
+          info={weekInfo}
+          templates={templates}
+          hasBlocks={blocks.length > 0}
+          onApply={handleApplyTemplate}
+        />
       )}
 
       {loading ? (
