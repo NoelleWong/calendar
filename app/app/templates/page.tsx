@@ -277,7 +277,7 @@ export default function TemplatesPage() {
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <h1 className="mb-1 text-lg font-semibold">Templates</h1>
       <p className="mb-6 text-sm text-graphite">
         Edit a template&apos;s default week, then save. New weeks are populated
@@ -296,14 +296,14 @@ export default function TemplatesPage() {
       {loading ? (
         <p className="text-sm text-graphite">Loading…</p>
       ) : (
-        <div className="flex items-start gap-8">
+        <div className="flex flex-col items-stretch gap-8 lg:flex-row lg:items-start">
           {/* Template list */}
-          <div className="w-56 flex-shrink-0">
+          <div className="w-full flex-shrink-0 lg:w-56">
             <ul className="mb-3 flex flex-col gap-1">
               {templates.map((t) => (
                 <li
                   key={t.id}
-                  className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm ${
+                  className={`flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm sm:py-1.5 ${
                     t.id === selectedTemplateId ? "bg-canvas" : "hover:bg-canvas"
                   }`}
                 >
@@ -322,7 +322,7 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     onClick={() => handleDeleteTemplate(t.id)}
-                    className="text-xs text-graphite hover:text-ink"
+                    className="-m-1.5 p-1.5 text-xs text-graphite hover:text-ink"
                     aria-label={`Delete ${t.name}`}
                   >
                     ✕
@@ -340,7 +340,7 @@ export default function TemplatesPage() {
                 onChange={(e) => setNewTemplateName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateTemplate()}
                 placeholder="New template name"
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-graphite"
+                className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-graphite sm:text-sm"
               />
               <button
                 type="button"
@@ -354,14 +354,14 @@ export default function TemplatesPage() {
           </div>
 
           {/* Editor */}
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             {!selectedTemplate ? (
               <p className="text-sm text-graphite">
                 Select a template on the left to edit it, or create a new one.
               </p>
             ) : (
               <>
-                <div className="mb-3 flex items-center gap-3">
+                <div className="mb-3 flex flex-wrap items-center gap-3">
                   <input
                     defaultValue={selectedTemplate.name}
                     onBlur={(e) => {
@@ -370,7 +370,7 @@ export default function TemplatesPage() {
                         handleRename(selectedTemplate.id, next);
                       }
                     }}
-                    className="rounded border border-line bg-surface px-2 py-1 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ink"
+                    className="min-w-0 rounded border border-line bg-surface px-2 py-1 text-base outline-none focus-visible:ring-1 focus-visible:ring-ink sm:text-sm"
                   />
                   {!selectedTemplate.isDefault && (
                     <button

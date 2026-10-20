@@ -22,7 +22,7 @@ export function AuthButton() {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-graphite">{session.user?.email}</span>
+      <span className="hidden text-sm text-graphite sm:inline">{session.user?.email}</span>
       <button
         onClick={() => signOut()}
         className="text-sm text-graphite hover:text-ink"

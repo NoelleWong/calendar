@@ -37,20 +37,24 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen font-sans antialiased">
         <Providers>
-          <header className="flex items-center gap-4 border-b border-line px-6 py-3">
+          {/* On phones the nav drops to its own full-width row (and scrolls
+              sideways if it still doesn't fit); from `sm` up it's one line. */}
+          <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2 sm:flex-nowrap sm:px-6 sm:py-3">
             <span className="text-sm font-semibold">Calendar</span>
-            <nav className="flex flex-1 gap-3">
+            <nav className="order-last -mx-1 flex w-full gap-1 overflow-x-auto sm:order-none sm:mx-0 sm:w-auto sm:flex-1 sm:gap-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-sm text-graphite hover:text-ink"
+                  className="shrink-0 px-1 py-1.5 text-sm text-graphite hover:text-ink sm:py-0"
                 >
                   {link.label}
                 </Link>
               ))}
             </nav>
-            <AuthButton />
+            <div className="ml-auto">
+              <AuthButton />
+            </div>
           </header>
           {children}
         </Providers>

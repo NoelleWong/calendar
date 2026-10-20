@@ -26,11 +26,15 @@ interface CalendarGridProps {
  * positioned stack of merged bubbles per day, computed fresh from raw
  * blocks via mergeWeekIntoBubbles (never persisted).
  *
- * Owns the cross-day move-drag: Bubble only reports raw mouse coordinates
+ * Owns the cross-day move-drag: Bubble only reports raw pointer coordinates
  * (it can't see sibling day columns), so this component hit-tests those
  * against each day box's rect to find the (dayOfWeek, startSlot) drop
  * target, tracks it as `moveDrag` for a live ghost preview, and hides the
  * original bubble at its source slot for the duration of the drag.
+ *
+ * The full week is wider than a phone screen, so the grid scrolls
+ * horizontally inside its own box (columns also narrow below `sm`) with the
+ * hour rail pinned to the left edge.
  */
 export function CalendarGrid({
   weekId,
@@ -87,14 +91,19 @@ export function CalendarGrid({
   }
 
   return (
-    <div className="inline-block">
+    <div className="min-w-0 max-w-full overflow-x-auto">
       <div className="mb-2 flex items-baseline gap-2">
         <span className="font-mono text-xs text-graphite">{weekId}</span>
+        {onBubbleMove && (
+          <span className="hidden text-xs text-graphite [@media(pointer:coarse)]:inline">
+            Tap to edit · press and hold to move, or hold an edge to resize
+          </span>
+        )}
       </div>
 
-      <div className="flex">
-        {/* Hour rail */}
-        <div className="flex flex-col pr-2">
+      <div className="flex w-max">
+        {/* Hour rail — sticky so times stay visible while scrolling across days */}
+        <div className="sticky left-0 z-10 flex flex-col bg-canvas pr-2">
           <div className="h-6" /> {/* spacer to align with day header row */}
           {Array.from({ length: 24 }).map((_, hour) => (
             <div
@@ -110,26 +119,26 @@ export function CalendarGrid({
         {/* Day columns */}
         <div className="flex gap-1">
           {DAY_LABELS.map((label, dayOfWeek) => {
-            const allBubbles = bubblesByDay[dayOfWeek] ?? [];
+            const bubbles = bubblesByDay[dayOfWeek] ?? [];
             const occupiedSlots = new Set<number>();
-            allBubbles.forEach((b) => {
+            bubbles.forEach((b) => {
               for (let i = 0; i < b.slotCount; i++) occupiedSlots.add(b.startSlot + i);
             });
 
-            // While the bubble being dragged originated on this day, hide it
-            // at its old spot — the ghost below (rendered on whichever day
-            // is the current drop target) stands in for it until the drag
-            // commits and `blocks`/`slots` catches up.
-            const bubbles =
-              moveDrag && moveDrag.bubble.dayOfWeek === dayOfWeek
-                ? allBubbles.filter(
-                    (b) =>
-                      !(b.startSlot === moveDrag.bubble.startSlot && b.projectId === moveDrag.bubble.projectId)
-                  )
-                : allBubbles;
+            // While a bubble from this day is being dragged, hide it at its
+            // old spot — the ghost below (rendered on whichever day is the
+            // current drop target) stands in for it until the drag commits
+            // and `blocks`/`slots` catches up. It's hidden rather than
+            // unmounted: a touch drag is bound to the element under the
+            // finger, and removing that element cancels the drag.
+            const isDragSource = (b: BubbleType) =>
+              moveDrag !== null &&
+              moveDrag.bubble.dayOfWeek === dayOfWeek &&
+              b.startSlot === moveDrag.bubble.startSlot &&
+              b.projectId === moveDrag.bubble.projectId;
 
             return (
-              <div key={dayOfWeek} className="w-28">
+              <div key={dayOfWeek} className="w-20 sm:w-28">
                 <div className="h-6 flex items-center justify-center text-xs font-medium">
                   {label}
                 </div>
@@ -175,10 +184,12 @@ export function CalendarGrid({
                     <Bubble
                       key={`${bubble.projectId}-${bubble.startSlot}`}
                       bubble={bubble}
+                      concealed={isDragSource(bubble)}
                       onClick={onBubbleClick}
                       onResize={onBubbleResize}
                       onMovePreview={onBubbleMove ? handleMovePreview : undefined}
                       onMoveCommit={onBubbleMove ? handleMoveCommit : undefined}
+                      onMoveCancel={onBubbleMove ? () => setMoveDrag(null) : undefined}
                     />
                   ))}
 

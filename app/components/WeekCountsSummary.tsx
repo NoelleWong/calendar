@@ -10,7 +10,7 @@ import type { WeekCounts } from "@/types";
  */
 export function WeekCountsSummary({ counts }: { counts: WeekCounts }) {
   return (
-    <div className="w-56 rounded-md border border-line bg-surface p-3 text-sm">
+    <div className="w-full shrink-0 rounded-md sm:w-56 border border-line bg-surface p-3 text-sm">
       <div className="mb-1 font-mono text-xs text-graphite">{counts.weekId}</div>
 
       <div className="mb-3">

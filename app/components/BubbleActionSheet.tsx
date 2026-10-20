@@ -55,12 +55,12 @@ export function BubbleActionSheet({
   const splitPoints = Array.from({ length: bubble.slotCount - 1 }, (_, i) => bubble.startSlot + i + 1);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/20" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/20 sm:items-center" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="w-72 rounded-lg border border-line bg-surface p-4 shadow-lg"
+        className="max-h-[85vh] w-full overflow-y-auto rounded-t-lg border border-line bg-surface p-4 shadow-lg sm:w-72 sm:rounded-lg"
       >
         {mode === "menu" && (
           <>
@@ -74,7 +74,7 @@ export function BubbleActionSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs text-graphite hover:text-ink"
+                className="-m-2 p-2 text-xs text-graphite hover:text-ink"
                 aria-label="Cancel"
               >
                 ✕
@@ -85,7 +85,7 @@ export function BubbleActionSheet({
               <button
                 type="button"
                 onClick={onChangeWholeProject}
-                className="rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
+                className="rounded-md px-2 py-2.5 text-left text-sm hover:bg-canvas sm:py-1.5"
               >
                 Change project
               </button>
@@ -93,7 +93,7 @@ export function BubbleActionSheet({
                 <button
                   type="button"
                   onClick={() => setMode("choose-split-point")}
-                  className="rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
+                  className="rounded-md px-2 py-2.5 text-left text-sm hover:bg-canvas sm:py-1.5"
                 >
                   Split…
                 </button>
@@ -102,7 +102,7 @@ export function BubbleActionSheet({
                 <button
                   type="button"
                   onClick={onDuplicate}
-                  className="rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
+                  className="rounded-md px-2 py-2.5 text-left text-sm hover:bg-canvas sm:py-1.5"
                 >
                   Duplicate
                 </button>
@@ -110,7 +110,7 @@ export function BubbleActionSheet({
               <button
                 type="button"
                 onClick={() => setMode("confirm-delete")}
-                className="rounded-md px-2 py-1.5 text-left text-sm text-red-700 hover:bg-red-50"
+                className="rounded-md px-2 py-2.5 text-left text-sm text-red-700 hover:bg-red-50 sm:py-1.5"
               >
                 Delete
               </button>
@@ -124,14 +124,14 @@ export function BubbleActionSheet({
               <button
                 type="button"
                 onClick={() => setMode("menu")}
-                className="flex items-center gap-1 text-xs text-graphite hover:text-ink"
+                className="-m-2 flex items-center gap-1 p-2 text-xs text-graphite hover:text-ink"
               >
                 ← Back
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs text-graphite hover:text-ink"
+                className="-m-2 p-2 text-xs text-graphite hover:text-ink"
                 aria-label="Cancel"
               >
                 ✕
@@ -152,7 +152,7 @@ export function BubbleActionSheet({
                         slotCount: bubble.startSlot + bubble.slotCount - slotIndex,
                       })
                     }
-                    className="w-full rounded-md px-2 py-1.5 text-left font-mono text-sm hover:bg-canvas"
+                    className="w-full rounded-md px-2 py-2.5 text-left font-mono text-sm hover:bg-canvas sm:py-1.5"
                   >
                     {slotIndexToLabel(slotIndex)}
                   </button>
@@ -172,14 +172,14 @@ export function BubbleActionSheet({
               <button
                 type="button"
                 onClick={() => setMode("menu")}
-                className="rounded px-2 py-1 text-xs text-graphite hover:text-ink"
+                className="rounded px-3 py-2 text-xs text-graphite hover:text-ink sm:px-2 sm:py-1"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={onDelete}
-                className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white"
+                className="rounded bg-red-600 px-3 py-2 text-xs font-medium text-white sm:px-2 sm:py-1"
               >
                 Delete
               </button>

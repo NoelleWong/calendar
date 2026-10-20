@@ -235,7 +235,7 @@ export default function CalendarWeekPage({
   }
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <h1 className="mb-4 text-lg font-semibold">Week {weekId}</h1>
 
       {error && (
@@ -250,7 +250,7 @@ export default function CalendarWeekPage({
       {loading ? (
         <p className="text-sm text-graphite">Loading…</p>
       ) : (
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col items-start gap-6 lg:flex-row">
           <CalendarGrid
             weekId={weekId}
             blocks={blocks}
