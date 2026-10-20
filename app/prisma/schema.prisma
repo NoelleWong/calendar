@@ -27,7 +27,9 @@ model User {
   projectGroups    ProjectGroup[]
   projects         Project[]
   calendarBlocks   CalendarBlock[]
+  calendarWeeks    CalendarWeek[]
   templates        Template[]
+  rotations        TemplateRotation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -139,6 +141,27 @@ model CalendarBlock {
   @@index([projectId])
 }
 
+// Marks a week as already filled, so it is auto-filled at most once — even
+// if every block is later cleared, the week stays empty rather than being
+// re-copied from a template. templateId records the template the week was
+// last filled from (by the rotation/default, or via "Apply template"), for
+// display only; editing the week never touches the template.
+model CalendarWeek {
+  id         String  @id @default(cuid())
+  userId     String
+  weekId     String // ISO week, e.g. "2026-W29"
+  templateId String?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template Template? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, weekId])
+  @@index([templateId])
+}
+
 enum CreatedFrom {
   TEMPLATE
   MANUAL
@@ -154,8 +177,10 @@ model Template {
   name      String
   isDefault Boolean @default(false)
 
-  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  blocks TemplateBlock[]
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blocks          TemplateBlock[]
+  rotationEntries TemplateRotationEntry[]
+  calendarWeeks   CalendarWeek[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -179,5 +204,49 @@ model TemplateBlock {
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([templateId, dayOfWeek, slotIndex])
+  @@index([templateId])
+}
+
+// An ordered cycle of templates that fills new weeks in turn: entry 0 fills
+// startWeekId, entry 1 the week after, and so on, wrapping back to entry 0.
+// The template for a week is computed from its distance to startWeekId (see
+// lib/rotation.ts) rather than by advancing a "current" pointer, so it stays
+// correct when weeks are opened out of order or skipped.
+//
+// A user can have several rotations; a week is filled from the one with the
+// latest startWeekId on or before it. Switching to a new set of templates is
+// therefore "create a rotation starting from week X" — earlier weeks keep
+// following the old one. Weeks no rotation covers fall back to the default
+// Template.
+model TemplateRotation {
+  id          String @id @default(cuid())
+  userId      String
+  name        String
+  startWeekId String // ISO week, e.g. "2026-W44"; must be normalized so string order = week order
+
+  user    User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries TemplateRotationEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  // At most one rotation takes effect in any given week.
+  @@unique([userId, startWeekId])
+}
+
+// One step of a rotation. Ordered by position (sparse positions are fine —
+// deleting a template removes its entries and the rest keep their order).
+// The same template may appear more than once (e.g. A, A, B).
+model TemplateRotationEntry {
+  id         String @id @default(cuid())
+  rotationId String
+  templateId String
+  position   Int
+
+  rotation TemplateRotation @relation(fields: [rotationId], references: [id], onDelete: Cascade)
+  template Template         @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([rotationId, position])
   @@index([templateId])
 }

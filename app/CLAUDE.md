@@ -11,8 +11,10 @@ colored by the project's group — e.g. a 30-min slot on Project A followed by
 a 90-min run on Project B renders as two touching bubbles, the second three
 times the length of the first. Storage stays at 30-min granularity underneath;
 bubbles are a rendering-layer merge of contiguous same-project slots.
-Users maintain a default weekly **Template**; new weeks auto-populate from it
-but can be freely edited without changing the template. Users can view
+Users maintain weekly **Templates**, optionally cycled by a **Rotation**
+(e.g. alternate "3d NUS kl" / "2d NUS hg" week by week); a new week
+auto-populates from the template scheduled for it, and can be freely edited
+— or have any template applied — without changing the template. Users can view
 multiple weeks side by side and see aggregate counts of blocks by color
 (group) and by project.
 
@@ -46,6 +48,15 @@ Template
 TemplateBlock
  ├─ id, templateId → Template
  ├─ dayOfWeek, slotIndex, projectId → Project
+
+TemplateRotation             // ordered cycle of templates
+ ├─ id, userId, name, startWeekId
+
+TemplateRotationEntry
+ ├─ id, rotationId → TemplateRotation, templateId → Template, position
+
+CalendarWeek                 // "this week has been filled" marker
+ ├─ id, userId, weekId, templateId → Template (nullable, last applied)
 ```
 
 **Rule: a block's color is always derived through its Project → ProjectGroup.**
@@ -71,12 +82,26 @@ edit" hit-testing per project.
 
 ## Core conventions
 
-- **Templates are read-only at instantiation time.** When a week has no
-  blocks yet, populate it by *copying* `TemplateBlock` rows into real
-  `CalendarBlock` rows tagged `createdFrom: 'template'`. Never reference the
-  template live from the week view — editing a week must never mutate the
-  template, and a "reset week to template" action is just "delete this
-  week's blocks, re-copy from template."
+- **Templates are read-only at instantiation time.** The first time a week
+  is opened (no `CalendarWeek` row yet, and no blocks), populate it by
+  *copying* `TemplateBlock` rows into real `CalendarBlock` rows tagged
+  `createdFrom: 'template'`, and create its `CalendarWeek` row so it's never
+  auto-filled again (a week the user empties stays empty). Never reference
+  the template live from the week view — editing a week must never mutate
+  the template. "Apply template to this week" / "reset week to template" is
+  just "delete this week's blocks, re-copy from template." All of this lives
+  in `lib/weekTemplates.ts`.
+- **Which template fills a week:** the rotation with the latest
+  `startWeekId` on or before the week, at index
+  `weeksBetween(startWeekId, weekId) mod entries.length` (`lib/rotation.ts`);
+  if no rotation covers the week, the `isDefault` template. Computed from
+  the week number, never from a "current template" pointer, so weeks opened
+  out of order or skipped still get the right one. Switching to a new set of
+  templates = a new rotation with a later start week.
+- **Week math** (parsing/validating `weekId`, next/previous week, distance
+  between weeks) goes through `lib/weeks.ts`. Rotation lookups compare
+  `weekId`s as strings, which is only correct for normalized ids — validate
+  with `isValidWeekId` before storing one.
 - **Weeks are identified by `weekId`**, an ISO week string like `2026-W29`
   (Monday-start). Don't use raw dates as the primary key for a week's blocks;
   derive dates from `weekId` + `dayOfWeek` for display only.
@@ -100,11 +125,14 @@ edit" hit-testing per project.
 ## Routes (planned)
 
 ```
-/calendar/[weekId]              single week grid
+/calendar                       redirects to this week (browser's date)
+/calendar/[weekId]              single week grid, prev/next week, apply template
 /compare?weeks=w1,w2,...         side-by-side weeks, scroll-synced
-/templates                       manage default template
+/templates                       manage templates and rotations
 /api/blocks                      CRUD for CalendarBlock
 /api/templates                   CRUD for Template / TemplateBlock
+/api/rotations                   CRUD for TemplateRotation (+ entries, replaced wholesale)
+/api/weeks                       GET a week's applied/scheduled template; POST apply one
 ```
 
 ## Environment variables
@@ -137,6 +165,11 @@ NEXTAUTH_SECRET=
   the env var list below with the corresponding client ID/secret vars.
 - **Visible hour range:** full 24h grid (`slotIndex` 0–47 all shown). No
   business-hours filtering.
+- **Template rotations:** stored as an ordered list (`position`), not a
+  linked list of "next" pointers — the template for a week is an index
+  computed from the week number, and the DB can't enforce that a chain of
+  pointers forms one intact cycle. The same template may appear more than
+  once in a rotation.
 - **Sharing model:** confirmed per-user only, no team/multi-user sharing.
   `userId` ownership on `ProjectGroup`/`Project`/`CalendarBlock`/`Template`
   stands as designed — no join tables or shared-visibility flags needed.

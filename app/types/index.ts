@@ -62,3 +62,24 @@ export interface ProjectWithCount extends ProjectDTO {
 
 export const SLOTS_PER_DAY = 48; // 24h * 2 (30-min slots)
 export const DAYS_PER_WEEK = 7;
+
+// Template rotations (see prisma/schema.prisma TemplateRotation).
+export interface TemplateRef {
+  id: string;
+  name: string;
+}
+
+export interface RotationDTO {
+  id: string;
+  name: string;
+  startWeekId: string;
+  updatedAt: string;
+  entries: { id: string; position: number; templateId: string; template: TemplateRef }[];
+}
+
+// GET /api/weeks — what a week was filled from vs. what's scheduled for it.
+export interface WeekTemplateInfo {
+  weekId: string;
+  appliedTemplate: TemplateRef | null;
+  scheduled: { template: TemplateRef; rotation: TemplateRef | null } | null;
+}

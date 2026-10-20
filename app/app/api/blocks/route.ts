@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { ensureWeekFilled } from "@/lib/weekTemplates";
+import { isValidWeekId } from "@/lib/weeks";
 
 const projectInclude = { project: { include: { group: true } } } as const;
 
@@ -12,10 +14,11 @@ const projectInclude = { project: { include: { group: true } } } as const;
  * for the comparison view, so the client can request everything it needs
  * in one call rather than one request per week).
  *
- * If a requested week has no blocks yet, it is instantiated from the
- * user's default Template first — copied into real CalendarBlock rows
- * tagged createdFrom: TEMPLATE. See CLAUDE.md, "Templates are read-only
- * at instantiation time."
+ * A requested week opened for the first time is filled first, from the
+ * template its rotation (or the default template) schedules for it —
+ * copied into real CalendarBlock rows tagged createdFrom: TEMPLATE. See
+ * lib/weekTemplates.ts and CLAUDE.md, "Templates are read-only at
+ * instantiation time."
  */
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -31,9 +34,13 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
   }
+  const invalid = weekIds.find((w) => !isValidWeekId(w));
+  if (invalid) {
+    return NextResponse.json({ error: `Invalid weekId: ${invalid}` }, { status: 400 });
+  }
 
   for (const weekId of weekIds) {
-    await instantiateWeekFromTemplateIfEmpty(userId, weekId);
+    await ensureWeekFilled(userId, weekId);
   }
 
   const blocks = await prisma.calendarBlock.findMany({
@@ -163,29 +170,4 @@ export async function DELETE(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true });
-}
-
-async function instantiateWeekFromTemplateIfEmpty(userId: string, weekId: string) {
-  const existingCount = await prisma.calendarBlock.count({ where: { userId, weekId } });
-  if (existingCount > 0) return;
-
-  const defaultTemplate = await prisma.template.findFirst({
-    where: { userId, isDefault: true },
-    include: { blocks: true },
-  });
-  if (!defaultTemplate || defaultTemplate.blocks.length === 0) return;
-
-  await prisma.calendarBlock.createMany({
-    data: defaultTemplate.blocks.map(
-      (tb: { dayOfWeek: number; slotIndex: number; projectId: string }) => ({
-        userId,
-        weekId,
-        dayOfWeek: tb.dayOfWeek,
-        slotIndex: tb.slotIndex,
-        projectId: tb.projectId,
-        createdFrom: "TEMPLATE" as const,
-      })
-    ),
-    skipDuplicates: true,
-  });
 }
