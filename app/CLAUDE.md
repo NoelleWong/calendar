@@ -148,9 +148,15 @@ NEXTAUTH_SECRET=
 ## Deploy
 
 - Frontend + API routes: Vercel, auto-deploy from `main`.
-- DB: managed Postgres (Neon/Supabase/Railway) — connection string in
-  `DATABASE_URL`, migrations via `npx prisma migrate deploy` as part of the
-  build step.
+- DB: managed Postgres (Neon) — pooled connection string in `DATABASE_URL`,
+  direct (non-pooler) one in `DIRECT_URL` for migrations. Vercel runs
+  `npm run vercel-build` (`scripts/vercel-build.sh`), which runs
+  `prisma migrate deploy` on production deploys only (`VERCEL_ENV` =
+  production), before `next build`. Preview deploys never migrate.
+- The old deployment keeps serving while a new one builds, i.e. against the
+  already-migrated database — so a migration must not break the code
+  currently live. Adding tables/columns is fine; renaming or dropping a
+  column takes two deploys (stop using it, then drop it).
 
 ## Decisions log
 

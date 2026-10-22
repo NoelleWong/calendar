@@ -7,7 +7,7 @@ See `CLAUDE.md` for architecture, data model, and conventions.
 ```bash
 cd app
 npm install
-cp .env.example .env       # fill in DATABASE_URL, NEXTAUTH_SECRET, Google OAuth keys
+cp .env.example .env       # fill in DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, Google OAuth keys
 npx prisma migrate dev --name init # if this fails, paste this in powershell to test: Test-NetConnection ep-bitter-grass-ayljvou6-pooler.c-5.us-east-2.aws.neon.tech -port 5432 (make sure not on any office or school wifi networks that block port 5432)
 npm run dev
 ```
@@ -56,10 +56,15 @@ npx neon-init --agent --data '{"step":"getting-started","hasConnectionString":tr
 2. Import into Vercel.
 3. Add env vars from `.env.example` in the Vercel project settings
    (`DATABASE_URL` from your managed Postgres — Neon/Supabase/Railway all work).
-4. Vercel runs `npm run build`, which runs `prisma generate` then
-   `next build`. Run `npx prisma migrate deploy` once against the production
-   DB (locally, pointed at the prod `DATABASE_URL`, or as a one-off Vercel
-   deploy hook) before first use.
+   `DIRECT_URL` is required for the **Production** environment: in Neon it's
+   the connection string with connection pooling turned off (same as
+   `DATABASE_URL` minus `-pooler` in the host).
+4. Vercel runs `npm run vercel-build` (`scripts/vercel-build.sh`): `prisma
+   generate`, then on production deploys only `prisma migrate deploy`, then
+   `next build`. Preview deploys skip migrations so an unmerged branch never
+   changes the production database. If the Vercel project overrides the
+   Build Command in its settings, clear that override, or this script won't
+   run.
 
 ## What's scaffolded vs. still to build
 
